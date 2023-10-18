@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>lily</name>
+  <version>1.12.0</version>
+  <description>lidar2lidar calibration tool</description>
+
+  <maintainer email="windzu1@gmail.com">windzu</maintainer>
+  <license>Apache 2</license>
+
+  <buildtool_depend>catkin</buildtool_depend> 
+
+  <!-- ros system -->
+  <depend>roscpp</depend>
+  <depend>roslib</depend>
+  <depend>std_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <depend>tf2</depend>
+  <depend>pcl_conversions</depend>
+  <depend>pcl_ros</depend>
+  <depend>dynamic_reconfigure</depend>
+
+</package>

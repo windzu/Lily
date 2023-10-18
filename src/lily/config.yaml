@@ -1,0 +1,32 @@
+/lidar_points/top:
+  is_main: true
+  load_from_file: false
+  file_path: "/home/autoware/Downloads/velodyne_points.bin"
+  x: 0.0
+  y: 0.0
+  z: 0.0
+  roll: 0.0
+  pitch: 0.0
+  yaw: 0.0
+
+/lidar_points/front:
+  is_main: false
+  load_from_file: false
+  file_path: "/home/autoware/Downloads/velodyne_points.bin"
+  x: 0.0
+  y: 0.0
+  z: 0.0
+  roll: 0.0
+  pitch: 0.0
+  yaw: 0.0
+
+/lidar_points/back:
+  is_main: false
+  load_from_file: false
+  file_path: "/home/autoware/Downloads/velodyne_points.bin"
+  x: 0.0
+  y: 0.0
+  z: 0.0
+  roll: 0.0
+  pitch: 0.0
+  yaw: 0.0

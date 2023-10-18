@@ -1,0 +1,10 @@
+<launch>
+    <node pkg="lily" type="lily" name="lily" output="screen">
+        <param name="manual_mode" value="true" />
+        <param name="config_path" value="$(find lily)/config.yaml" />
+    </node>
+
+    <node pkg="rqt_reconfigure" type="rqt_reconfigure" name="rqt_reconfigure" output="screen"/>
+    <node pkg="rviz" name="rviz" type="rviz" args="-d $(find lily)/rviz/calibration.rviz" />
+
+</launch>

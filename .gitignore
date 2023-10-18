@@ -1,3 +1,9 @@
+.vscode
+build/
+devel/
+.catkin_workspace
+src/CMakeLists.txt
+
 # Prerequisites
 *.d
 
