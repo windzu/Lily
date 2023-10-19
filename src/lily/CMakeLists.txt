@@ -40,8 +40,8 @@ catkin_package(
 )
 
 include_directories(
-    ${catkin_INCLUDE_DIRS}
     include
+    ${catkin_INCLUDE_DIRS}
 )
 
 aux_source_directory(./src SRC)

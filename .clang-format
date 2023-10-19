@@ -1,0 +1,21 @@
+---
+BasedOnStyle: Google
+---
+Language:                               Cpp
+Cpp11BracedListStyle:                   true
+Standard:                               Cpp11
+AllowShortFunctionsOnASingleLine:       None
+DerivePointerAlignment:                 false
+PointerAlignment:                       Left
+CommentPragmas:                         '^ NOLINT'
+ColumnLimit:                            100
+IncludeCategories:
+  - Regex:                              '^<(.*)(\.h>)$'
+    Priority:                           1
+  - Regex:                              '^<'
+    Priority:                           2
+  - Regex:                              '^"(opencv2|pcl|Eigen|gtest|coin|adolc)/'
+    Priority:                           3
+  - Regex:                              '^"(cyber|logger|util)/'
+    Priority:                           4
+---

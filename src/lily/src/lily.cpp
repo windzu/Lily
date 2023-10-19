@@ -1,8 +1,8 @@
 /*
  * @Author: windzu windzu1@gmail.com
  * @Date: 2023-06-16 17:34:42
- * @LastEditors: windzu windzu1@gmail.com
- * @LastEditTime: 2023-10-19 01:52:12
+ * @LastEditors: wind windzu1@gmail.com
+ * @LastEditTime: 2023-10-19 16:00:56
  * @Description:
  * Copyright (c) 2023 by windzu, All Rights Reserved.
  */
@@ -22,9 +22,7 @@ Lily::Lily(ros::NodeHandle nh, ros::NodeHandle pnh) {
   }
 
   if (manual_mode_) {
-    server_.reset(
-        new dynamic_reconfigure::Server<dynamic_tf_config::dynamicConfig>(
-            mutex_, pnh_));
+    server_.reset(new dynamic_reconfigure::Server<dynamic_tf_config::dynamicConfig>(mutex_, pnh_));
     server_f_ = boost::bind(&Lily::dynamic_config_callback, this, _1);
     server_->setCallback(server_f_);
 
@@ -36,13 +34,47 @@ Lily::Lily(ros::NodeHandle nh, ros::NodeHandle pnh) {
       rate.sleep();
     }
   } else {
+    std::cout << "-------------------------" << std::endl;
+    std::cout << "Collection" << std::endl;
+
     ros::Rate rate(10);
     while (ros::ok() && !cloud_map_full_check()) {
       ros::spinOnce();
       rate.sleep();
     }
+
+    std::cout << "-------------------------" << std::endl;
+    std::cout << "Calibration" << std::endl;
+
+    // debug
+    // echo tf_matrix_map_
+    std::cout << "before calibration:" << std::endl;
+    std::cout << "-------------------------" << std::endl;
+    for (auto iter = tf_matrix_map_.begin(); iter != tf_matrix_map_.end(); iter++) {
+      std::cout << iter->first << std::endl;
+      std::cout << iter->second << std::endl;
+    }
+    std::cout << "-------------------------" << std::endl;
+
+    // calibration
+    calibrator_.reset(new Calibrator(num_iter_, num_lpr_, th_seeds_, th_dist_));
+    tf_matrix_map_ = calibrator_->process(cloud_map_, main_topic_, points_map_, tf_matrix_map_);
+
+    // debug
+    std::cout << "after calibration:" << std::endl;
+    std::cout << "-------------------------" << std::endl;
+    for (auto iter = tf_matrix_map_.begin(); iter != tf_matrix_map_.end(); iter++) {
+      std::cout << iter->first << std::endl;
+      std::cout << iter->second << std::endl;
+    }
+    std::cout << "-------------------------" << std::endl;
   }
 
+  std::cout << "-------------------------" << std::endl;
+  std::cout << "Saving" << std::endl;
+  // save
+  save_config();
+  ros::shutdown();
   return;
 }
 
@@ -63,15 +95,14 @@ bool Lily::init() {
     // find main topic
     bool is_main = iter->second["is_main"].as<bool>();
     if (is_main) {
-      main_topic_name_ = topic;
+      main_topic_ = topic;
     }
 
     // check if need load from pcd file
     bool load_from_file = iter->second["load_from_file"].as<bool>();
     if (load_from_file) {
       std::string file_path = iter->second["file_path"].as<std::string>();
-      pcl::PointCloud<pcl::PointXYZI>::Ptr cloud(
-          new pcl::PointCloud<pcl::PointXYZI>);
+      pcl::PointCloud<pcl::PointXYZI>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZI>);
       if (pcl::io::loadPCDFile<pcl::PointXYZI>(file_path, *cloud) == -1) {
         ROS_ERROR("load pcd file %s failed", file_path.c_str());
         return false;
@@ -88,10 +119,22 @@ bool Lily::init() {
     Eigen::AngleAxisd rot_z(yaw, Eigen::Vector3d::UnitZ());
     tf_matrix = (translation * rot_z * rot_y * rot_x).matrix();
 
+    // load points
+    points_map_[topic] = std::vector<pcl::PointXYZ>();
+    if (iter->second["points"].IsDefined()) {
+      for (auto point_iter = iter->second["points"].begin();
+           point_iter != iter->second["points"].end(); ++point_iter) {
+        // Assuming the points are in the format [x, y, z]
+        double x = (*point_iter)[0].as<double>();
+        double y = (*point_iter)[1].as<double>();
+        double z = (*point_iter)[2].as<double>();
+        points_map_[topic].push_back(pcl::PointXYZ(x, y, z));
+      }
+    }
+
     ros::Subscriber sub = nh_.subscribe<sensor_msgs::PointCloud2>(
         topic, 1, boost::bind(&Lily::callback, this, _1, topic));
-    ros::Publisher pub =
-        nh_.advertise<sensor_msgs::PointCloud2>(topic + "/calibrated", 1);
+    ros::Publisher pub = nh_.advertise<sensor_msgs::PointCloud2>(topic + "/calibrated", 1);
 
     subs_.push_back(sub);
     pubs_map_[topic] = pub;
@@ -120,12 +163,9 @@ bool Lily::cloud_map_full_check() {
 
 void Lily::save_config() {
   if (manual_mode_) {
-    for (auto iter = dynamic_config_map_.begin();
-         iter != dynamic_config_map_.end(); iter++) {
+    for (auto iter = dynamic_config_map_.begin(); iter != dynamic_config_map_.end(); iter++) {
       std::string topic = iter->first;
       dynamic_tf_config::dynamicConfig dynamic_config = iter->second;
-
-      ROS_INFO("start save config");
       config_[topic]["x"] = dynamic_config.x;
       config_[topic]["y"] = dynamic_config.y;
       config_[topic]["z"] = dynamic_config.z;
@@ -133,6 +173,46 @@ void Lily::save_config() {
       config_[topic]["pitch"] = dynamic_config.pitch;
       config_[topic]["yaw"] = dynamic_config.yaw;
     }
+
+  } else {
+    for (auto iter = tf_matrix_map_.begin(); iter != tf_matrix_map_.end(); iter++) {
+      std::string topic = iter->first;
+      Eigen::Matrix4d tf_matrix = iter->second;
+
+      config_[topic]["x"] = tf_matrix(0, 3);
+      config_[topic]["y"] = tf_matrix(1, 3);
+      config_[topic]["z"] = tf_matrix(2, 3);
+
+      Eigen::Vector3d euler_angles = rotation_matrix_to_euler_angles(tf_matrix.block<3, 3>(0, 0));
+      config_[topic]["roll"] = euler_angles[0];
+      config_[topic]["pitch"] = euler_angles[1];
+      config_[topic]["yaw"] = euler_angles[2];
+    }
+  }
+
+  // iter config_
+  for (auto iter = config_.begin(); iter != config_.end(); iter++) {
+    std::string topic = iter->first.as<std::string>();
+    double x = iter->second["x"].as<double>();
+    double y = iter->second["y"].as<double>();
+    double z = iter->second["z"].as<double>();
+    double roll = iter->second["roll"].as<double>();
+    double pitch = iter->second["pitch"].as<double>();
+    double yaw = iter->second["yaw"].as<double>();
+
+    x = std::round(x * 1000.0) / 1000.0;
+    y = std::round(y * 1000.0) / 1000.0;
+    z = std::round(z * 1000.0) / 1000.0;
+    roll = std::round(roll * 1000.0) / 1000.0;
+    pitch = std::round(pitch * 1000.0) / 1000.0;
+    yaw = std::round(yaw * 1000.0) / 1000.0;
+
+    config_[topic]["x"] = x;
+    config_[topic]["y"] = y;
+    config_[topic]["z"] = z;
+    config_[topic]["roll"] = roll;
+    config_[topic]["pitch"] = pitch;
+    config_[topic]["yaw"] = yaw;
   }
 
   // save config
@@ -145,10 +225,8 @@ void Lily::save_config() {
   return;
 }
 
-void Lily::callback(const sensor_msgs::PointCloud2::ConstPtr &msg,
-                    const std::string &topic_name) {
-  pcl::PointCloud<pcl::PointXYZI>::Ptr cloud(
-      new pcl::PointCloud<pcl::PointXYZI>);
+void Lily::callback(const sensor_msgs::PointCloud2::ConstPtr& msg, const std::string& topic_name) {
+  pcl::PointCloud<pcl::PointXYZI>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZI>);
   pcl::fromROSMsg(*msg, *cloud);
   cloud_map_[topic_name] = cloud;
   return;
@@ -200,8 +278,7 @@ void Lily::trans_and_pub() {
   for (auto iter = cloud_map_.begin(); iter != cloud_map_.end(); iter++) {
     if (iter->second != nullptr) {
       std::string topic = iter->first;
-      pcl::PointCloud<pcl::PointXYZI>::Ptr cloud(
-          new pcl::PointCloud<pcl::PointXYZI>);
+      pcl::PointCloud<pcl::PointXYZI>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZI>);
       pcl::transformPointCloud(*(iter->second), *cloud, tf_matrix_map_[topic]);
       sensor_msgs::PointCloud2::Ptr pc_msg(new sensor_msgs::PointCloud2);
       pcl::toROSMsg(*cloud, *pc_msg);
@@ -219,4 +296,24 @@ std::string Lily::current_date_time() {
   std::stringstream ss;
   ss << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %X");
   return ss.str();
+}
+
+// 旋转矩阵转欧拉角
+Eigen::Vector3d Lily::rotation_matrix_to_euler_angles(const Eigen::Matrix3d& R) {
+  // assert(isRotationMatrix(R));
+  double sy = sqrt(R(0, 0) * R(0, 0) + R(1, 0) * R(1, 0));
+
+  double singular = sy < 1e-6;  // If
+
+  double x, y, z;
+  if (!singular) {
+    x = atan2(R(2, 1), R(2, 2));
+    y = atan2(-R(2, 0), sy);
+    z = atan2(R(1, 0), R(0, 0));
+  } else {
+    x = atan2(-R(1, 2), R(1, 1));
+    y = atan2(-R(2, 0), sy);
+    z = 0;
+  }
+  return Eigen::Vector3d(x, y, z);
 }

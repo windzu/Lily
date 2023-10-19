@@ -1,6 +1,6 @@
 <launch>
     <node pkg="lily" type="lily" name="lily" output="screen">
-        <param name="mode" value="auto" />
+        <param name="manual_mode" value="false" />
         <param name="config_path" value="$(find lily)/config.yaml" />
     </node>
 
