@@ -4,6 +4,9 @@ devel/
 .catkin_workspace
 src/CMakeLists.txt
 
+# keep config.yaml bug ignore config.yaml_xxx
+config.yaml_*
+
 # Prerequisites
 *.d
 

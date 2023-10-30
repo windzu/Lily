@@ -2,7 +2,7 @@
  * @Author: windzu windzu1@gmail.com
  * @Date: 2023-06-16 17:34:42
  * @LastEditors: wind windzu1@gmail.com
- * @LastEditTime: 2023-10-19 16:00:56
+ * @LastEditTime: 2023-10-30 13:28:52
  * @Description:
  * Copyright (c) 2023 by windzu, All Rights Reserved.
  */
@@ -85,12 +85,23 @@ bool Lily::init() {
   // 2, iter config_
   for (auto iter = config_.begin(); iter != config_.end(); iter++) {
     std::string topic = iter->first.as<std::string>();
-    double x = iter->second["x"].as<double>();
-    double y = iter->second["y"].as<double>();
-    double z = iter->second["z"].as<double>();
-    double roll = iter->second["roll"].as<double>();
-    double pitch = iter->second["pitch"].as<double>();
-    double yaw = iter->second["yaw"].as<double>();
+    double x = iter->second["tf_x"].as<double>();
+    double y = iter->second["tf_y"].as<double>();
+    double z = iter->second["tf_z"].as<double>();
+    double roll = iter->second["tf_roll"].as<double>();
+    double pitch = iter->second["tf_pitch"].as<double>();
+    double yaw = iter->second["tf_yaw"].as<double>();
+
+    // set dynamic_config_map_
+    dynamic_tf_config::dynamicConfig config;
+    config.lidar_topic = topic;
+    config.x = x;
+    config.y = y;
+    config.z = z;
+    config.roll = roll;
+    config.pitch = pitch;
+    config.yaw = yaw;
+    dynamic_config_map_[topic] = config;
 
     // find main topic
     bool is_main = iter->second["is_main"].as<bool>();
@@ -166,12 +177,12 @@ void Lily::save_config() {
     for (auto iter = dynamic_config_map_.begin(); iter != dynamic_config_map_.end(); iter++) {
       std::string topic = iter->first;
       dynamic_tf_config::dynamicConfig dynamic_config = iter->second;
-      config_[topic]["x"] = dynamic_config.x;
-      config_[topic]["y"] = dynamic_config.y;
-      config_[topic]["z"] = dynamic_config.z;
-      config_[topic]["roll"] = dynamic_config.roll;
-      config_[topic]["pitch"] = dynamic_config.pitch;
-      config_[topic]["yaw"] = dynamic_config.yaw;
+      config_[topic]["tf_x"] = dynamic_config.x;
+      config_[topic]["tf_y"] = dynamic_config.y;
+      config_[topic]["tf_z"] = dynamic_config.z;
+      config_[topic]["tf_roll"] = dynamic_config.roll;
+      config_[topic]["tf_pitch"] = dynamic_config.pitch;
+      config_[topic]["tf_yaw"] = dynamic_config.yaw;
     }
 
   } else {
@@ -179,26 +190,26 @@ void Lily::save_config() {
       std::string topic = iter->first;
       Eigen::Matrix4d tf_matrix = iter->second;
 
-      config_[topic]["x"] = tf_matrix(0, 3);
-      config_[topic]["y"] = tf_matrix(1, 3);
-      config_[topic]["z"] = tf_matrix(2, 3);
+      config_[topic]["tf_x"] = tf_matrix(0, 3);
+      config_[topic]["tf_y"] = tf_matrix(1, 3);
+      config_[topic]["tf_z"] = tf_matrix(2, 3);
 
       Eigen::Vector3d euler_angles = rotation_matrix_to_euler_angles(tf_matrix.block<3, 3>(0, 0));
-      config_[topic]["roll"] = euler_angles[0];
-      config_[topic]["pitch"] = euler_angles[1];
-      config_[topic]["yaw"] = euler_angles[2];
+      config_[topic]["tf_roll"] = euler_angles[0];
+      config_[topic]["tf_pitch"] = euler_angles[1];
+      config_[topic]["tf_yaw"] = euler_angles[2];
     }
   }
 
   // iter config_
   for (auto iter = config_.begin(); iter != config_.end(); iter++) {
     std::string topic = iter->first.as<std::string>();
-    double x = iter->second["x"].as<double>();
-    double y = iter->second["y"].as<double>();
-    double z = iter->second["z"].as<double>();
-    double roll = iter->second["roll"].as<double>();
-    double pitch = iter->second["pitch"].as<double>();
-    double yaw = iter->second["yaw"].as<double>();
+    double x = iter->second["tf_x"].as<double>();
+    double y = iter->second["tf_y"].as<double>();
+    double z = iter->second["tf_z"].as<double>();
+    double roll = iter->second["tf_roll"].as<double>();
+    double pitch = iter->second["tf_pitch"].as<double>();
+    double yaw = iter->second["tf_yaw"].as<double>();
 
     x = std::round(x * 1000.0) / 1000.0;
     y = std::round(y * 1000.0) / 1000.0;
@@ -207,12 +218,12 @@ void Lily::save_config() {
     pitch = std::round(pitch * 1000.0) / 1000.0;
     yaw = std::round(yaw * 1000.0) / 1000.0;
 
-    config_[topic]["x"] = x;
-    config_[topic]["y"] = y;
-    config_[topic]["z"] = z;
-    config_[topic]["roll"] = roll;
-    config_[topic]["pitch"] = pitch;
-    config_[topic]["yaw"] = yaw;
+    config_[topic]["tf_x"] = x;
+    config_[topic]["tf_y"] = y;
+    config_[topic]["tf_z"] = z;
+    config_[topic]["tf_roll"] = roll;
+    config_[topic]["tf_pitch"] = pitch;
+    config_[topic]["tf_yaw"] = yaw;
   }
 
   // save config

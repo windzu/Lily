@@ -1,7 +1,7 @@
 <launch>
     <node pkg="lily" type="lily" name="lily" output="screen">
         <param name="manual_mode" value="true" />
-        <param name="config_path" value="$(find lily)/config.yaml_2023-10-19 16:12:10" />
+        <param name="config_path" value="$(find lily)/config.yaml" />
     </node>
 
     <node pkg="rqt_reconfigure" type="rqt_reconfigure" name="rqt_reconfigure" output="screen"/>
