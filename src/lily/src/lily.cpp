@@ -1,8 +1,8 @@
 /*
  * @Author: windzu windzu1@gmail.com
  * @Date: 2023-06-16 17:34:42
- * @LastEditors: wind windzu1@gmail.com
- * @LastEditTime: 2023-10-30 13:28:52
+ * @LastEditors: windzu windzu1@gmail.com
+ * @LastEditTime: 2023-11-18 17:04:27
  * @Description:
  * Copyright (c) 2023 by windzu, All Rights Reserved.
  */
@@ -85,19 +85,23 @@ bool Lily::init() {
   // 2, iter config_
   for (auto iter = config_.begin(); iter != config_.end(); iter++) {
     std::string topic = iter->first.as<std::string>();
-    double x = iter->second["tf_x"].as<double>();
-    double y = iter->second["tf_y"].as<double>();
-    double z = iter->second["tf_z"].as<double>();
-    double roll = iter->second["tf_roll"].as<double>();
-    double pitch = iter->second["tf_pitch"].as<double>();
-    double yaw = iter->second["tf_yaw"].as<double>();
+
+    // translation is a vector of [x, y, z]
+    // rotation is a vector of [w, x, y, z]
+    std::vector<double> translation =
+        iter->second["transform"]["translation"].as<std::vector<double>>();
+    std::vector<double> rotation = iter->second["transform"]["rotation"].as<std::vector<double>>();
 
     // set dynamic_config_map_
     dynamic_tf_config::dynamicConfig config;
+    double roll, pitch, yaw;
+    tf::Quaternion q(rotation[1], rotation[2], rotation[3], rotation[0]);
+    tf::Matrix3x3(q).getRPY(roll, pitch, yaw);
+
     config.lidar_topic = topic;
-    config.x = x;
-    config.y = y;
-    config.z = z;
+    config.x = translation[0];
+    config.y = translation[1];
+    config.z = translation[2];
     config.roll = roll;
     config.pitch = pitch;
     config.yaw = yaw;
@@ -124,22 +128,45 @@ bool Lily::init() {
     }
 
     Eigen::Matrix4d tf_matrix = Eigen::Matrix4d::Identity();
-    Eigen::Translation3d translation(x, y, z);
-    Eigen::AngleAxisd rot_x(roll, Eigen::Vector3d::UnitX());
-    Eigen::AngleAxisd rot_y(pitch, Eigen::Vector3d::UnitY());
-    Eigen::AngleAxisd rot_z(yaw, Eigen::Vector3d::UnitZ());
-    tf_matrix = (translation * rot_z * rot_y * rot_x).matrix();
+    // calculate tf_matrix_map_ from translation and rotation use Eigen
+    // - translation is a vector of [x, y, z]
+    // - rotation is a vector of [w, x, y, z]
+    // - tf_matrix is a 4x4 matrix
+
+    Eigen::Translation3d trans(translation[0], translation[1], translation[2]);
+    Eigen::Quaterniond quat(rotation[0], rotation[1], rotation[2], rotation[3]);
+    quat.normalize();  // 正规化四元数以确保其表示有效的旋转
+
+    Eigen::Affine3d transform =
+        Eigen::Translation3d(translation[0], translation[1], translation[2]) * quat;
+    tf_matrix = transform.matrix();
 
     // load points
     points_map_[topic] = std::vector<pcl::PointXYZ>();
-    if (iter->second["points"].IsDefined()) {
-      for (auto point_iter = iter->second["points"].begin();
-           point_iter != iter->second["points"].end(); ++point_iter) {
-        // Assuming the points are in the format [x, y, z]
-        double x = (*point_iter)[0].as<double>();
-        double y = (*point_iter)[1].as<double>();
-        double z = (*point_iter)[2].as<double>();
-        points_map_[topic].push_back(pcl::PointXYZ(x, y, z));
+    if (iter->second["use_points"]) {
+      // subscribe /clicked_point topic
+      ros::Subscriber sub = nh_.subscribe<geometry_msgs::PointStamped>(
+          "/clicked_point", 1, boost::bind(&Lily::clicked_point_callback, this, _1, topic));
+
+      // publish transformed cloud and selected points from cloud
+      ros::Publisher pub = nh_.advertise<sensor_msgs::PointCloud2>(topic + "/calibrated", 1);
+
+      pcl::PointCloud<pcl::PointXYZI>::Ptr transformed_cloud(new pcl::PointCloud<pcl::PointXYZI>);
+      pcl::transformPointCloud(*(cloud_map_[topic]), *transformed_cloud, tf_matrix);
+      sensor_msgs::PointCloud2::Ptr pc_msg(new sensor_msgs::PointCloud2);
+      pcl::toROSMsg(*transformed_cloud, *pc_msg);
+
+      pc_msg->header.frame_id = "base_link";
+
+      // publish
+      pub.publish(pc_msg);
+
+      // ros spin
+      ros::Rate rate(10);
+      while (ros::ok() && points_map_[topic].size() < 4) {
+        pub.publish(pc_msg);
+        ros::spinOnce();
+        rate.sleep();
       }
     }
 
@@ -190,14 +217,23 @@ void Lily::save_config() {
       std::string topic = iter->first;
       Eigen::Matrix4d tf_matrix = iter->second;
 
-      config_[topic]["tf_x"] = tf_matrix(0, 3);
-      config_[topic]["tf_y"] = tf_matrix(1, 3);
-      config_[topic]["tf_z"] = tf_matrix(2, 3);
+      // convert transform matrix to translation and rotation
+      Eigen::Vector3d translation = tf_matrix.block<3, 1>(0, 3);
+      Eigen::Quaterniond quat(tf_matrix.block<3, 3>(0, 0));
+      quat.normalize();  // 正规化四元数以确保其表示有效的旋转
+      Eigen::Vector4d rotation = Eigen::Vector4d(quat.w(), quat.x(), quat.y(), quat.z());
 
-      Eigen::Vector3d euler_angles = rotation_matrix_to_euler_angles(tf_matrix.block<3, 3>(0, 0));
-      config_[topic]["tf_roll"] = euler_angles[0];
-      config_[topic]["tf_pitch"] = euler_angles[1];
-      config_[topic]["tf_yaw"] = euler_angles[2];
+      // save to config_
+      config_[topic]["transform"]["translation"] = translation;
+      config_[topic]["transform"]["rotation"] = rotation;
+
+      //       config_[topic]["tf_x"] = tf_matrix(0, 3);
+      //       config_[topic]["tf_y"] = tf_matrix(1, 3);
+      //       config_[topic]["tf_z"] = tf_matrix(2, 3);
+      //
+      //       Eigen::Vector3d euler_angles = rotation_matrix_to_euler_angles(tf_matrix.block<3,
+      //       3>(0, 0)); config_[topic]["tf_roll"] = euler_angles[0]; config_[topic]["tf_pitch"] =
+      //       euler_angles[1]; config_[topic]["tf_yaw"] = euler_angles[2];
     }
   }
 
@@ -307,6 +343,25 @@ std::string Lily::current_date_time() {
   std::stringstream ss;
   ss << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %X");
   return ss.str();
+}
+
+void Lily::clicked_point_callback(const geometry_msgs::PointStamped::ConstPtr& msg,
+                                  const std::string& topic_name) {
+  if (points_map_.find(topic_name) == points_map_.end()) {
+    ROS_ERROR("topic %s not in points_map_", topic_name.c_str());
+    return;
+  }
+
+  pcl::PointXYZ point;
+  point.x = msg->point.x;
+  point.y = msg->point.y;
+  point.z = msg->point.z;
+  points_map_[topic_name].push_back(point);
+
+  // ros info
+  ROS_INFO("topic %s, point: (%f, %f, %f)", topic_name.c_str(), point.x, point.y, point.z);
+
+  return;
 }
 
 // 旋转矩阵转欧拉角

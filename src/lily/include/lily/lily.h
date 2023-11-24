@@ -1,8 +1,8 @@
 /*
  * @Author: windzu windzu1@gmail.com
  * @Date: 2023-07-05 11:38:22
- * @LastEditors: wind windzu1@gmail.com
- * @LastEditTime: 2023-10-19 13:58:24
+ * @LastEditors: windzu windzu1@gmail.com
+ * @LastEditTime: 2023-11-18 16:17:08
  * @Description:
  * Copyright (c) 2023 by windzu, All Rights Reserved.
  */
@@ -42,6 +42,8 @@ class Lily {
   void dynamic_config_callback(dynamic_tf_config::dynamicConfig config);
   void flash_status_bar();
   void save_config();
+  void clicked_point_callback(const geometry_msgs::PointStamped::ConstPtr& msg,
+                              const std::string& topic_name);
   std::string current_date_time();
   Eigen::Vector3d rotation_matrix_to_euler_angles(const Eigen::Matrix3d& R);
 

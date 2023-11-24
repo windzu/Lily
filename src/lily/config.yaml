@@ -2,32 +2,23 @@
   is_main: true
   load_from_file: true
   file_path: /home/wind/Github/Lily/data/top.pcd
-  tf_x: 1.586
-  tf_y: -0.001
-  tf_z: 2.008
-  tf_roll: -0.008999999999999999
-  tf_pitch: 0.014
-  tf_yaw: 0.01
-  points: [[0.8696318864822388, 6.824498176574707, -0.188262939453125], [0.7620881795883179, 7.84665584564209, -0.188262939453125], [1.3540160655975342, 9.922316551208496, -0.146514892578125], [0.503454327583313, -9.081259727478027, -0.343231201171875], [0.15725164115428925, -12.118701934814453, -0.394805908203125], [-0.025683898478746414, -17.713621139526367, -0.4365234375], [3.082796812057495, 17.549753189086914, -0.05712890625]]
+  transform:
+    translation: [1.559,-0.018,1.764]
+    rotation: [-0.999997,-0.000499,0.000501,0.0025]
+  use_points: true
 /lidar_points/front:
   is_main: false
   load_from_file: true
   file_path: /home/wind/Github/Lily/data/front.pcd
-  tf_x: 1.767
-  tf_y: -0.588
-  tf_z: 1.588
-  tf_roll: 3.13
-  tf_pitch: -0.025
-  tf_yaw: -0.765
-  points: []
+  transform:
+    translation: [1.77,-0.615,1.389]
+    rotation: [-0.001591,-0.927723,0.373235,-0.004749]
+  use_points: false
 /lidar_points/back:
   is_main: false
   load_from_file: true
   file_path: /home/wind/Github/Lily/data/back.pcd
-  tf_x: -0.477
-  tf_y: 0.624
-  tf_z: 1.596
-  tf_roll: -3.132
-  tf_pitch: -0.004
-  tf_yaw: 2.348
-  points: []
+  transform:
+    translation: [-0.52,0.605,1.304]
+    rotation: [0.008248,0.386392,0.922251,0.009334]
+  use_points: true
