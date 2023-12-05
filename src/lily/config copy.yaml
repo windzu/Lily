@@ -3,25 +3,22 @@
   load_from_file: true
   file_path: /home/wind/Github/Lily/data/top.pcd
   transform:
-    translation: [1.559, -0.018, 1.764]
-    rotation: [-0.999997, -0.000499, 0.000501, 0.0025]
-    rotation_euler: [0, 0, 0]
+    translation: [1.559,-0.018,1.764]
+    rotation: [-0.999997,-0.000499,0.000501,0.0025]
   use_points: true
 /lidar_points/front:
   is_main: false
   load_from_file: true
   file_path: /home/wind/Github/Lily/data/front.pcd
   transform:
-    translation: [1.77, -0.615, 1.389]
-    rotation: [-0.001591, -0.927723, 0.373235, -0.004749]
-    rotation_euler: [0, 0, 0]
+    translation: [1.77,-0.615,1.389]
+    rotation: [-0.001591,-0.927723,0.373235,-0.004749]
   use_points: false
 /lidar_points/back:
   is_main: false
   load_from_file: true
   file_path: /home/wind/Github/Lily/data/back.pcd
   transform:
-    translation: [-0.52, 0.605, 1.304]
-    rotation: [0.008248, 0.386392, 0.922251, 0.009334]
-    rotation_euler: [0, 0, 0]
+    translation: [-0.52,0.605,1.304]
+    rotation: [0.008248,0.386392,0.922251,0.009334]
   use_points: false

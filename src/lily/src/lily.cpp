@@ -1,8 +1,8 @@
 /*
  * @Author: windzu windzu1@gmail.com
  * @Date: 2023-06-16 17:34:42
- * @LastEditors: windzu windzu1@gmail.com
- * @LastEditTime: 2023-11-18 17:04:27
+ * @LastEditors: wind windzu1@gmail.com
+ * @LastEditTime: 2023-11-24 15:33:50
  * @Description:
  * Copyright (c) 2023 by windzu, All Rights Reserved.
  */
@@ -92,19 +92,19 @@ bool Lily::init() {
         iter->second["transform"]["translation"].as<std::vector<double>>();
     std::vector<double> rotation = iter->second["transform"]["rotation"].as<std::vector<double>>();
 
+    std::vector<double> euler_angles_vec = quaternion_to_euler_angles(rotation);
+    Eigen::Matrix4d tf_matrix =
+        calculate_tf_matrix_from_translation_and_rotation(translation, rotation);
+
     // set dynamic_config_map_
     dynamic_tf_config::dynamicConfig config;
-    double roll, pitch, yaw;
-    tf::Quaternion q(rotation[1], rotation[2], rotation[3], rotation[0]);
-    tf::Matrix3x3(q).getRPY(roll, pitch, yaw);
-
     config.lidar_topic = topic;
     config.x = translation[0];
     config.y = translation[1];
     config.z = translation[2];
-    config.roll = roll;
-    config.pitch = pitch;
-    config.yaw = yaw;
+    config.roll = euler_angles_vec[0];
+    config.pitch = euler_angles_vec[1];
+    config.yaw = euler_angles_vec[2];
     dynamic_config_map_[topic] = config;
 
     // find main topic
@@ -126,20 +126,6 @@ bool Lily::init() {
     } else {
       cloud_map_[topic] = nullptr;
     }
-
-    Eigen::Matrix4d tf_matrix = Eigen::Matrix4d::Identity();
-    // calculate tf_matrix_map_ from translation and rotation use Eigen
-    // - translation is a vector of [x, y, z]
-    // - rotation is a vector of [w, x, y, z]
-    // - tf_matrix is a 4x4 matrix
-
-    Eigen::Translation3d trans(translation[0], translation[1], translation[2]);
-    Eigen::Quaterniond quat(rotation[0], rotation[1], rotation[2], rotation[3]);
-    quat.normalize();  // 正规化四元数以确保其表示有效的旋转
-
-    Eigen::Affine3d transform =
-        Eigen::Translation3d(translation[0], translation[1], translation[2]) * quat;
-    tf_matrix = transform.matrix();
 
     // load points
     points_map_[topic] = std::vector<pcl::PointXYZ>();
@@ -163,7 +149,7 @@ bool Lily::init() {
 
       // ros spin
       ros::Rate rate(10);
-      while (ros::ok() && points_map_[topic].size() < 4) {
+      while (ros::ok() && points_map_[topic].size() < min_points_num_) {
         pub.publish(pc_msg);
         ros::spinOnce();
         rate.sleep();
@@ -182,14 +168,6 @@ bool Lily::init() {
   return true;
 }
 
-void Lily::flash_status_bar() {
-  if (flash_status_bar_flag_) {
-    server_->updateConfig(temp_config_);
-    flash_status_bar_flag_ = false;
-  }
-  return;
-}
-
 bool Lily::cloud_map_full_check() {
   for (auto iter = cloud_map_.begin(); iter != cloud_map_.end(); iter++) {
     if (iter->second == nullptr) {
@@ -204,12 +182,25 @@ void Lily::save_config() {
     for (auto iter = dynamic_config_map_.begin(); iter != dynamic_config_map_.end(); iter++) {
       std::string topic = iter->first;
       dynamic_tf_config::dynamicConfig dynamic_config = iter->second;
-      config_[topic]["tf_x"] = dynamic_config.x;
-      config_[topic]["tf_y"] = dynamic_config.y;
-      config_[topic]["tf_z"] = dynamic_config.z;
-      config_[topic]["tf_roll"] = dynamic_config.roll;
-      config_[topic]["tf_pitch"] = dynamic_config.pitch;
-      config_[topic]["tf_yaw"] = dynamic_config.yaw;
+
+      Eigen::Matrix4f tf_matrix = Eigen::Matrix4f::Identity();
+      Eigen::Translation3f tl(dynamic_config.x, dynamic_config.y, dynamic_config.z);
+      Eigen::AngleAxisf rot_x(dynamic_config.roll, Eigen::Vector3f::UnitX());
+      Eigen::AngleAxisf rot_y(dynamic_config.pitch, Eigen::Vector3f::UnitY());
+      Eigen::AngleAxisf rot_z(dynamic_config.yaw, Eigen::Vector3f::UnitZ());
+      tf_matrix = (tl * rot_z * rot_y * rot_x).matrix();
+
+      // convert transform matrix to translation and rotation
+      std::vector<double> translation_vec =
+          transform_matrix_to_translation(tf_matrix.cast<double>());
+      std::vector<double> quaternion_vec = transform_matrix_to_quaternion(tf_matrix.cast<double>());
+      std::vector<double> euler_angles_vec =
+          transform_matrix_to_euler_angles(tf_matrix.cast<double>());
+
+      // save to config_
+      config_[topic]["transform"]["translation"] = translation_vec;
+      config_[topic]["transform"]["rotation"] = quaternion_vec;
+      config_[topic]["transform"]["rotation_euler"] = euler_angles_vec;
     }
 
   } else {
@@ -218,49 +209,43 @@ void Lily::save_config() {
       Eigen::Matrix4d tf_matrix = iter->second;
 
       // convert transform matrix to translation and rotation
-      Eigen::Vector3d translation = tf_matrix.block<3, 1>(0, 3);
-      Eigen::Quaterniond quat(tf_matrix.block<3, 3>(0, 0));
-      quat.normalize();  // 正规化四元数以确保其表示有效的旋转
-      Eigen::Vector4d rotation = Eigen::Vector4d(quat.w(), quat.x(), quat.y(), quat.z());
+      std::vector<double> translation_vec =
+          transform_matrix_to_translation(tf_matrix.cast<double>());
+      std::vector<double> quaternion_vec = transform_matrix_to_quaternion(tf_matrix.cast<double>());
+      std::vector<double> euler_angles_vec =
+          transform_matrix_to_euler_angles(tf_matrix.cast<double>());
 
       // save to config_
-      config_[topic]["transform"]["translation"] = translation;
-      config_[topic]["transform"]["rotation"] = rotation;
-
-      //       config_[topic]["tf_x"] = tf_matrix(0, 3);
-      //       config_[topic]["tf_y"] = tf_matrix(1, 3);
-      //       config_[topic]["tf_z"] = tf_matrix(2, 3);
-      //
-      //       Eigen::Vector3d euler_angles = rotation_matrix_to_euler_angles(tf_matrix.block<3,
-      //       3>(0, 0)); config_[topic]["tf_roll"] = euler_angles[0]; config_[topic]["tf_pitch"] =
-      //       euler_angles[1]; config_[topic]["tf_yaw"] = euler_angles[2];
+      config_[topic]["transform"]["translation"] = translation_vec;
+      config_[topic]["transform"]["rotation"] = quaternion_vec;
+      config_[topic]["transform"]["rotation_euler"] = euler_angles_vec;
     }
   }
 
-  // iter config_
-  for (auto iter = config_.begin(); iter != config_.end(); iter++) {
-    std::string topic = iter->first.as<std::string>();
-    double x = iter->second["tf_x"].as<double>();
-    double y = iter->second["tf_y"].as<double>();
-    double z = iter->second["tf_z"].as<double>();
-    double roll = iter->second["tf_roll"].as<double>();
-    double pitch = iter->second["tf_pitch"].as<double>();
-    double yaw = iter->second["tf_yaw"].as<double>();
-
-    x = std::round(x * 1000.0) / 1000.0;
-    y = std::round(y * 1000.0) / 1000.0;
-    z = std::round(z * 1000.0) / 1000.0;
-    roll = std::round(roll * 1000.0) / 1000.0;
-    pitch = std::round(pitch * 1000.0) / 1000.0;
-    yaw = std::round(yaw * 1000.0) / 1000.0;
-
-    config_[topic]["tf_x"] = x;
-    config_[topic]["tf_y"] = y;
-    config_[topic]["tf_z"] = z;
-    config_[topic]["tf_roll"] = roll;
-    config_[topic]["tf_pitch"] = pitch;
-    config_[topic]["tf_yaw"] = yaw;
-  }
+  //   // iter config_
+  //   for (auto iter = config_.begin(); iter != config_.end(); iter++) {
+  //     std::string topic = iter->first.as<std::string>();
+  //     double x = iter->second["tf_x"].as<double>();
+  //     double y = iter->second["tf_y"].as<double>();
+  //     double z = iter->second["tf_z"].as<double>();
+  //     double roll = iter->second["tf_roll"].as<double>();
+  //     double pitch = iter->second["tf_pitch"].as<double>();
+  //     double yaw = iter->second["tf_yaw"].as<double>();
+  //
+  //     x = std::round(x * 1000.0) / 1000.0;
+  //     y = std::round(y * 1000.0) / 1000.0;
+  //     z = std::round(z * 1000.0) / 1000.0;
+  //     roll = std::round(roll * 1000.0) / 1000.0;
+  //     pitch = std::round(pitch * 1000.0) / 1000.0;
+  //     yaw = std::round(yaw * 1000.0) / 1000.0;
+  //
+  //     config_[topic]["tf_x"] = x;
+  //     config_[topic]["tf_y"] = y;
+  //     config_[topic]["tf_z"] = z;
+  //     config_[topic]["tf_roll"] = roll;
+  //     config_[topic]["tf_pitch"] = pitch;
+  //     config_[topic]["tf_yaw"] = yaw;
+  //   }
 
   // save config
   std::string save_path = config_path_ + "_" + current_date_time();
@@ -279,6 +264,51 @@ void Lily::callback(const sensor_msgs::PointCloud2::ConstPtr& msg, const std::st
   return;
 }
 
+void Lily::trans_and_pub() {
+  for (auto iter = cloud_map_.begin(); iter != cloud_map_.end(); iter++) {
+    if (iter->second != nullptr) {
+      std::string topic = iter->first;
+      pcl::PointCloud<pcl::PointXYZI>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZI>);
+      pcl::transformPointCloud(*(iter->second), *cloud, tf_matrix_map_[topic]);
+      sensor_msgs::PointCloud2::Ptr pc_msg(new sensor_msgs::PointCloud2);
+      pcl::toROSMsg(*cloud, *pc_msg);
+      pc_msg->header.frame_id = "base_link";
+      pubs_map_[topic].publish(pc_msg);
+    }
+  }
+  return;
+}
+
+void Lily::clicked_point_callback(const geometry_msgs::PointStamped::ConstPtr& msg,
+                                  const std::string& topic_name) {
+  if (points_map_.find(topic_name) == points_map_.end()) {
+    ROS_ERROR("topic %s not in points_map_", topic_name.c_str());
+    return;
+  }
+
+  pcl::PointXYZ point;
+  point.x = msg->point.x;
+  point.y = msg->point.y;
+  point.z = msg->point.z;
+  points_map_[topic_name].push_back(point);
+
+  // ros info
+  ROS_INFO("topic %s, point: (%f, %f, %f)", topic_name.c_str(), point.x, point.y, point.z);
+
+  if (points_map_[topic_name].size() == min_points_num_) {
+    //
+  }
+
+  return;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// auto mode
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// mannual mode
+///////////////////////////////////////////////////////////////////////////////////////////////////
 void Lily::dynamic_config_callback(dynamic_tf_config::dynamicConfig config) {
   std::string topic = config.lidar_topic;
 
@@ -321,50 +351,17 @@ void Lily::dynamic_config_callback(dynamic_tf_config::dynamicConfig config) {
   return;
 }
 
-void Lily::trans_and_pub() {
-  for (auto iter = cloud_map_.begin(); iter != cloud_map_.end(); iter++) {
-    if (iter->second != nullptr) {
-      std::string topic = iter->first;
-      pcl::PointCloud<pcl::PointXYZI>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZI>);
-      pcl::transformPointCloud(*(iter->second), *cloud, tf_matrix_map_[topic]);
-      sensor_msgs::PointCloud2::Ptr pc_msg(new sensor_msgs::PointCloud2);
-      pcl::toROSMsg(*cloud, *pc_msg);
-      pc_msg->header.frame_id = "base_link";
-      pubs_map_[topic].publish(pc_msg);
-    }
+void Lily::flash_status_bar() {
+  if (flash_status_bar_flag_) {
+    server_->updateConfig(temp_config_);
+    flash_status_bar_flag_ = false;
   }
   return;
 }
 
-std::string Lily::current_date_time() {
-  auto now = std::chrono::system_clock::now();
-  auto in_time_t = std::chrono::system_clock::to_time_t(now);
-
-  std::stringstream ss;
-  ss << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %X");
-  return ss.str();
-}
-
-void Lily::clicked_point_callback(const geometry_msgs::PointStamped::ConstPtr& msg,
-                                  const std::string& topic_name) {
-  if (points_map_.find(topic_name) == points_map_.end()) {
-    ROS_ERROR("topic %s not in points_map_", topic_name.c_str());
-    return;
-  }
-
-  pcl::PointXYZ point;
-  point.x = msg->point.x;
-  point.y = msg->point.y;
-  point.z = msg->point.z;
-  points_map_[topic_name].push_back(point);
-
-  // ros info
-  ROS_INFO("topic %s, point: (%f, %f, %f)", topic_name.c_str(), point.x, point.y, point.z);
-
-  return;
-}
-
-// 旋转矩阵转欧拉角
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// utils
+///////////////////////////////////////////////////////////////////////////////////////////////////
 Eigen::Vector3d Lily::rotation_matrix_to_euler_angles(const Eigen::Matrix3d& R) {
   // assert(isRotationMatrix(R));
   double sy = sqrt(R(0, 0) * R(0, 0) + R(1, 0) * R(1, 0));
@@ -382,4 +379,95 @@ Eigen::Vector3d Lily::rotation_matrix_to_euler_angles(const Eigen::Matrix3d& R) 
     z = 0;
   }
   return Eigen::Vector3d(x, y, z);
+}
+
+std::vector<double> Lily::transform_matrix_to_euler_angles(const Eigen::Matrix4d& T) {
+  Eigen::Matrix3d R = T.block<3, 3>(0, 0);
+  Eigen::Vector3d euler_angles = rotation_matrix_to_euler_angles(R);
+  std::vector<double> euler_angles_vec(euler_angles.data(),
+                                       euler_angles.data() + euler_angles.size());
+  return euler_angles_vec;
+}
+
+std::vector<double> Lily::transform_matrix_to_quaternion(const Eigen::Matrix4d& T) {
+  Eigen::Matrix3d R = T.block<3, 3>(0, 0);
+  Eigen::Quaterniond quat(R);
+  quat.normalize();  // 正规化四元数以确保其表示有效的旋转
+  Eigen::Vector4d quaternion = Eigen::Vector4d(quat.w(), quat.x(), quat.y(), quat.z());
+  std::vector<double> quaternion_vec(quaternion.data(), quaternion.data() + quaternion.size());
+  return quaternion_vec;
+}
+
+std::vector<double> Lily::transform_matrix_to_translation(const Eigen::Matrix4d& T) {
+  Eigen::Vector3d translation = T.block<3, 1>(0, 3);
+  std::vector<double> translation_vec(translation.data(), translation.data() + translation.size());
+  return translation_vec;
+}
+
+std::vector<double> Lily::quaternion_to_euler_angles(const std::vector<double>& q) {
+  Eigen::Quaterniond quat(q[0], q[1], q[2], q[3]);
+  quat.normalize();  // 正规化四元数以确保其表示有效的旋转
+  Eigen::Vector3d euler_angles = quat.toRotationMatrix().eulerAngles(0, 1, 2);
+  std::vector<double> euler_angles_vec(euler_angles.data(),
+                                       euler_angles.data() + euler_angles.size());
+  return euler_angles_vec;
+}
+
+Eigen::Matrix4d Lily::calculate_tf_matrix_from_translation_and_rotation(
+    const std::vector<double>& translation, const std::vector<double>& rotation) {
+  Eigen::Matrix4d tf_matrix = Eigen::Matrix4d::Identity();
+
+  // calculate tf_matrix_map_ from translation and rotation(quat)
+  // - translation is a vector of [x, y, z]
+  // - rotation is a vector of [w, x, y, z]
+  // - tf_matrix is a 4x4 matrix
+
+  Eigen::Translation3d trans(translation[0], translation[1], translation[2]);
+  Eigen::Quaterniond quat(rotation[0], rotation[1], rotation[2], rotation[3]);
+  quat.normalize();  // 正规化四元数以确保其表示有效的旋转
+
+  Eigen::Affine3d transform =
+      Eigen::Translation3d(translation[0], translation[1], translation[2]) * quat;
+  tf_matrix = transform.matrix();
+
+  return tf_matrix;
+}
+
+Eigen::Matrix4d Lily::calculate_tf_matrix_by_points(const std::string topic,
+                                                    const std::vector<double>& rotation) {
+  Eigen::Matrix4d tf_matrix = Eigen::Matrix4d::Identity();
+
+  // subscribe /clicked_point topic
+  ros::Subscriber sub = nh_.subscribe<geometry_msgs::PointStamped>(
+      "/clicked_point", 1, boost::bind(&Lily::clicked_point_callback, this, _1, topic));
+
+  // publish transformed cloud and selected points from cloud
+  ros::Publisher pub = nh_.advertise<sensor_msgs::PointCloud2>(topic + "/calibrated", 1);
+
+  pcl::PointCloud<pcl::PointXYZI>::Ptr transformed_cloud(new pcl::PointCloud<pcl::PointXYZI>);
+  pcl::transformPointCloud(*(cloud_map_[topic]), *transformed_cloud, tf_matrix);
+  sensor_msgs::PointCloud2::Ptr pc_msg(new sensor_msgs::PointCloud2);
+  pcl::toROSMsg(*transformed_cloud, *pc_msg);
+
+  pc_msg->header.frame_id = "base_link";
+
+  // publish
+  pub.publish(pc_msg);
+
+  // ros spin
+  ros::Rate rate(10);
+  while (ros::ok() && points_map_[topic].size() < min_points_num_) {
+    pub.publish(pc_msg);
+    ros::spinOnce();
+    rate.sleep();
+  }
+}
+
+std::string Lily::current_date_time() {
+  auto now = std::chrono::system_clock::now();
+  auto in_time_t = std::chrono::system_clock::to_time_t(now);
+
+  std::stringstream ss;
+  ss << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %X");
+  return ss.str();
 }

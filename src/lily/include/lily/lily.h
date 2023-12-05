@@ -1,8 +1,8 @@
 /*
  * @Author: windzu windzu1@gmail.com
  * @Date: 2023-07-05 11:38:22
- * @LastEditors: windzu windzu1@gmail.com
- * @LastEditTime: 2023-11-18 16:17:08
+ * @LastEditors: wind windzu1@gmail.com
+ * @LastEditTime: 2023-11-24 15:03:56
  * @Description:
  * Copyright (c) 2023 by windzu, All Rights Reserved.
  */
@@ -45,7 +45,15 @@ class Lily {
   void clicked_point_callback(const geometry_msgs::PointStamped::ConstPtr& msg,
                               const std::string& topic_name);
   std::string current_date_time();
+
+  // utils
   Eigen::Vector3d rotation_matrix_to_euler_angles(const Eigen::Matrix3d& R);
+  std::vector<double> transform_matrix_to_euler_angles(const Eigen::Matrix4d& T);
+  std::vector<double> transform_matrix_to_quaternion(const Eigen::Matrix4d& T);
+  std::vector<double> transform_matrix_to_translation(const Eigen::Matrix4d& T);
+  std::vector<double> quaternion_to_euler_angles(const std::vector<double>& q);
+  Eigen::Matrix4d calculate_tf_matrix_from_translation_and_rotation(
+      const std::vector<double>& translation, const std::vector<double>& rotation);
 
  private:
   // ros
@@ -54,6 +62,8 @@ class Lily {
   std::string config_path_;
   bool manual_mode_ = false;
   std::string main_topic_ = "";
+
+  int min_points_num_ = 4;  // estimate plane need at least 4 points
 
   YAML::Node config_;
 
