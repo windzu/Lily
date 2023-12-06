@@ -1,3 +1,11 @@
+/*
+ * @Author: windzu windzu1@gmail.com
+ * @Date: 2023-12-06 23:12:01
+ * @LastEditors: windzu windzu1@gmail.com
+ * @LastEditTime: 2023-12-07 01:23:44
+ * @Description:
+ * Copyright (c) 2023 by windzu, All Rights Reserved.
+ */
 #include "lily/auto_lily.h"
 
 AutoLily::AutoLily(ros::NodeHandle nh, ros::NodeHandle pnh) {
@@ -44,6 +52,7 @@ bool AutoLily::init() {
     Eigen::Matrix4d tf_matrix =
         calculate_tf_matrix_from_translation_and_rotation(translation,
                                                           rotation);
+    tf_matrix_map_[topic] = tf_matrix;
 
     // find main topic
     // Note : auto mode need know which topic is main topic
@@ -68,14 +77,16 @@ bool AutoLily::init() {
       cloud_map_[topic] = nullptr;
     }
 
+    // load if need calibration
+    need_calibration_map_[topic] = iter->second["need_calibration"].as<bool>();
+
     // load points from clicked_point topic
     // 1. subscribe /clicked_point topic and publish transformed cloud
     // 2. selected points from cloud mannually
     // 3. wait until enough points are selected
     // 4. calculate tf_matrix from points (estimate plane)
-    points_map_[topic] = std::vector<pcl::PointXYZ>();
+    points_map_[topic] = std::vector<pcl::PointXYZI>();
     if (iter->second["use_points"]) {
-      // subscribe /clicked_point topic
       ros::Subscriber sub = nh_.subscribe<geometry_msgs::PointStamped>(
           "/clicked_point", 1,
           boost::bind(&AutoLily::clicked_point_callback, this, _1, topic));
@@ -102,12 +113,68 @@ bool AutoLily::init() {
         ros::spinOnce();
         rate.sleep();
       }
-    }
 
-    tf_matrix_map_[topic] = tf_matrix;
+      // when enough points are selected
+      // calculate tf_matrix from points
+      pcl::PointCloud<pcl::PointXYZI>::Ptr cloud(
+          new pcl::PointCloud<pcl::PointXYZI>);
+      for (auto point : points_map_[topic]) {
+        cloud->push_back(point);
+      }
+      pcl::ModelCoefficients::Ptr coefficients = compute_plane(cloud);
+      Eigen::Vector3d real_ground_normal_vector(0, 0, 1);
+      Eigen::Vector3d estimate_ground_normal_vector;
+      estimate_ground_normal_vector[0] = coefficients->values[0];
+      estimate_ground_normal_vector[1] = coefficients->values[1];
+      estimate_ground_normal_vector[2] = coefficients->values[2];
+      Eigen::Matrix4d rotation_matrix =
+          calculate_rotation_matrix_from_two_vectors(
+              estimate_ground_normal_vector, real_ground_normal_vector);
+      // update tf_matrix
+      tf_matrix_map_[topic] = rotation_matrix * tf_matrix;
+
+      // set need_calibration to false because we have calibrated
+      need_calibration_map_[topic] = false;
+    }
   }
 
   return true;
+}
+
+void AutoLily::run() {
+  std::cout << "-------------------------" << std::endl;
+  std::cout << "Collection" << std::endl;
+
+  ros::Rate rate(10);
+  while (ros::ok() && !cloud_map_full_check()) {
+    ros::spinOnce();
+    rate.sleep();
+  }
+
+  std::cout << "-------------------------" << std::endl;
+  std::cout << "Calibration" << std::endl;
+
+  // calibration
+  calibrator_.reset(new Calibrator(num_iter_, num_lpr_, th_seeds_, th_dist_));
+  tf_matrix_map_ = calibrator_->process(cloud_map_, main_topic_, points_map_,
+                                        tf_matrix_map_);
+
+  // debug
+  std::cout << "after calibration:" << std::endl;
+  std::cout << "-------------------------" << std::endl;
+  for (auto iter = tf_matrix_map_.begin(); iter != tf_matrix_map_.end();
+       iter++) {
+    std::cout << iter->first << std::endl;
+    std::cout << iter->second << std::endl;
+  }
+  std::cout << "-------------------------" << std::endl;
+
+  std::cout << "-------------------------" << std::endl;
+  std::cout << "Saving" << std::endl;
+  // save
+  save_config();
+  ros::shutdown();
+  return;
 }
 
 void AutoLily::clicked_point_callback(
@@ -118,7 +185,7 @@ void AutoLily::clicked_point_callback(
     return;
   }
 
-  pcl::PointXYZ point;
+  pcl::PointXYZI point;
   point.x = msg->point.x;
   point.y = msg->point.y;
   point.z = msg->point.z;
@@ -128,9 +195,49 @@ void AutoLily::clicked_point_callback(
   ROS_INFO("topic %s, point: (%f, %f, %f)", topic_name.c_str(), point.x,
            point.y, point.z);
 
-  if (points_map_[topic_name].size() == min_points_num_) {
-    // calculate tf_matrix (plane )
+  return;
+}
+
+void AutoLily::callback(const sensor_msgs::PointCloud2::ConstPtr& msg,
+                        const std::string& topic_name) {
+  pcl::PointCloud<pcl::PointXYZI>::Ptr cloud(
+      new pcl::PointCloud<pcl::PointXYZI>);
+  pcl::fromROSMsg(*msg, *cloud);
+  cloud_map_[topic_name] = cloud;
+  return;
+}
+
+void AutoLily::save_config() {
+  for (auto iter = tf_matrix_map_.begin(); iter != tf_matrix_map_.end();
+       iter++) {
+    std::string topic = iter->first;
+    Eigen::Matrix4d tf_matrix = iter->second;
+
+    // convert transform matrix to translation and rotation
+    std::vector<double> translation_vec =
+        transform_matrix_to_translation(tf_matrix.cast<double>());
+    std::vector<double> quaternion_vec =
+        transform_matrix_to_quaternion(tf_matrix.cast<double>());
+    std::vector<double> euler_angles_vec =
+        transform_matrix_to_euler_angles(tf_matrix.cast<double>());
+
+    // round to 3 decimal places
+    translation_vec = round_to_3_decimal_places(translation_vec);
+    quaternion_vec = round_to_3_decimal_places(quaternion_vec);
+    euler_angles_vec = round_to_3_decimal_places(euler_angles_vec);
+
+    // save to config_
+    config_[topic]["transform"]["translation"] = translation_vec;
+    config_[topic]["transform"]["rotation"] = quaternion_vec;
+    config_[topic]["transform"]["rotation_euler"] = euler_angles_vec;
   }
 
+  // save config
+  std::string save_path = config_path_ + "_" + current_date_time();
+  std::ofstream fout(save_path);
+  fout << config_;
+  fout.close();
+
+  ROS_INFO("save config success");
   return;
 }

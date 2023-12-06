@@ -1,8 +1,8 @@
 /*
  * @Author: windzu windzu1@gmail.com
  * @Date: 2023-06-16 16:13:34
- * @LastEditors: wind windzu1@gmail.com
- * @LastEditTime: 2023-12-06 18:26:17
+ * @LastEditors: windzu windzu1@gmail.com
+ * @LastEditTime: 2023-12-06 23:55:41
  * @Description:
  * Copyright (c) 2023 by windzu, All Rights Reserved.
  */
@@ -411,43 +411,48 @@ Eigen::Vector3d Calibrator::rotation_matrix_to_euler_angles(
   return Eigen::Vector3d(x, y, z);
 }
 
-// 获取两个法向量之间的转换刚性矩阵
-Eigen::Matrix4d Calibrator::create_rotate_matrix(Eigen::Vector3f before,
-                                                 Eigen::Vector3f after) {
-  before.normalize();
-  after.normalize();
-
-  float angle = acos(before.dot(after));
-  Eigen::Vector3f p_rotate = before.cross(after);
-  p_rotate.normalize();
-
-  Eigen::Matrix4d rotationMatrix = Eigen::Matrix4d::Identity();
-  rotationMatrix(0, 0) =
-      cos(angle) + p_rotate[0] * p_rotate[0] * (1 - cos(angle));
-  rotationMatrix(0, 1) =
-      p_rotate[0] * p_rotate[1] *
-      (1 - cos(angle) -
-       p_rotate[2] *
-           sin(angle));  // 这里跟公式比多了一个括号，但是看实验结果它是对的
-  rotationMatrix(0, 2) =
-      p_rotate[1] * sin(angle) + p_rotate[0] * p_rotate[2] * (1 - cos(angle));
-
-  rotationMatrix(1, 0) =
-      p_rotate[2] * sin(angle) + p_rotate[0] * p_rotate[1] * (1 - cos(angle));
-  rotationMatrix(1, 1) =
-      cos(angle) + p_rotate[1] * p_rotate[1] * (1 - cos(angle));
-  rotationMatrix(1, 2) =
-      -p_rotate[0] * sin(angle) + p_rotate[1] * p_rotate[2] * (1 - cos(angle));
-
-  rotationMatrix(2, 0) =
-      -p_rotate[1] * sin(angle) + p_rotate[0] * p_rotate[2] * (1 - cos(angle));
-  rotationMatrix(2, 1) =
-      p_rotate[0] * sin(angle) + p_rotate[1] * p_rotate[2] * (1 - cos(angle));
-  rotationMatrix(2, 2) =
-      cos(angle) + p_rotate[2] * p_rotate[2] * (1 - cos(angle));
-
-  return rotationMatrix;
-}
+// // 获取两个法向量之间的转换刚性矩阵
+// Eigen::Matrix4d Calibrator::create_rotate_matrix(Eigen::Vector3f before,
+//                                                  Eigen::Vector3f after) {
+//   before.normalize();
+//   after.normalize();
+//
+//   float angle = acos(before.dot(after));
+//   Eigen::Vector3f p_rotate = before.cross(after);
+//   p_rotate.normalize();
+//
+//   Eigen::Matrix4d rotationMatrix = Eigen::Matrix4d::Identity();
+//   rotationMatrix(0, 0) =
+//       cos(angle) + p_rotate[0] * p_rotate[0] * (1 - cos(angle));
+//   rotationMatrix(0, 1) =
+//       p_rotate[0] * p_rotate[1] *
+//       (1 - cos(angle) -
+//        p_rotate[2] *
+//            sin(angle));  // 这里跟公式比多了一个括号，但是看实验结果它是对的
+//   rotationMatrix(0, 2) =
+//       p_rotate[1] * sin(angle) + p_rotate[0] * p_rotate[2] * (1 -
+//       cos(angle));
+//
+//   rotationMatrix(1, 0) =
+//       p_rotate[2] * sin(angle) + p_rotate[0] * p_rotate[1] * (1 -
+//       cos(angle));
+//   rotationMatrix(1, 1) =
+//       cos(angle) + p_rotate[1] * p_rotate[1] * (1 - cos(angle));
+//   rotationMatrix(1, 2) =
+//       -p_rotate[0] * sin(angle) + p_rotate[1] * p_rotate[2] * (1 -
+//       cos(angle));
+//
+//   rotationMatrix(2, 0) =
+//       -p_rotate[1] * sin(angle) + p_rotate[0] * p_rotate[2] * (1 -
+//       cos(angle));
+//   rotationMatrix(2, 1) =
+//       p_rotate[0] * sin(angle) + p_rotate[1] * p_rotate[2] * (1 -
+//       cos(angle));
+//   rotationMatrix(2, 2) =
+//       cos(angle) + p_rotate[2] * p_rotate[2] * (1 - cos(angle));
+//
+//   return rotationMatrix;
+// }
 
 // 使用gpf算法提取地面并获取法向量
 pcl::ModelCoefficients::Ptr Calibrator::ground_plane_extraction(

@@ -1,5 +1,6 @@
 /lidar_points/top:
   need_calibration: false
+  use_points: true
   is_main: true
   load_from_file: true
   file_path: /home/wind/calib_data_1206/ground/lidar_points_top/0.pcd
@@ -7,9 +8,9 @@
     translation: [1.559, -0.018, 1.764]
     rotation: [-0.999997, -0.000499, 0.000501, 0.0025]
     rotation_euler: [0, 0, 0]
-  use_points: true
 /lidar_points/front:
   need_calibration: true
+  use_points: false
   is_main: false
   load_from_file: true
   file_path: /home/wind/calib_data_1206/ground/lidar_points_front/0.pcd
@@ -17,9 +18,9 @@
     translation: [1.77, -0.615, 1.389]
     rotation: [-0.001591, -0.927723, 0.373235, -0.004749]
     rotation_euler: [0, 0, 0]
-  use_points: false
 /lidar_points/back:
   need_calibration: true
+  use_points: false
   is_main: false
   load_from_file: true
   file_path: /home/wind/calib_data_1206/ground/lidar_points_back/0.pcd
@@ -27,4 +28,3 @@
     translation: [-0.52, 0.605, 1.304]
     rotation: [0.008248, 0.386392, 0.922251, 0.009334]
     rotation_euler: [0, 0, 0]
-  use_points: false
