@@ -4,20 +4,24 @@ bool point_cmp(pcl::PointXYZ a, pcl::PointXYZ b) {
   return a.z < b.z;
 }
 
-GroundPlaneFit::GroundPlaneFit(double sensor_height, int num_iter, int num_lpr, double th_seeds,
-                               double th_dist) {
+GroundPlaneFit::GroundPlaneFit(double sensor_height, int num_iter, int num_lpr,
+                               double th_seeds, double th_dist) {
   sensor_height_ = sensor_height;
   num_iter_ = num_iter;
   num_lpr_ = num_lpr;
   th_seeds_ = th_seeds;
   th_dist_ = th_dist;
 
-  g_seeds_pc_ = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
-  g_ground_pc_ = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
-  g_not_ground_pc_ = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
+  g_seeds_pc_ =
+      pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
+  g_ground_pc_ =
+      pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
+  g_not_ground_pc_ =
+      pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
 }
 
-std::pair<pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::Ptr>
+std::pair<pcl::PointCloud<pcl::PointXYZ>::Ptr,
+          pcl::PointCloud<pcl::PointXYZ>::Ptr>
 GroundPlaneFit::process(const pcl::PointCloud<pcl::PointXYZ>::Ptr& input) {
   // 1.Msg to pointcloud
   pcl::PointCloud<pcl::PointXYZ> laserCloudIn = *input;
@@ -67,8 +71,9 @@ GroundPlaneFit::process(const pcl::PointCloud<pcl::PointXYZ>::Ptr& input) {
       }
     }
   }
-  return std::pair<pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::Ptr>(
-      g_not_ground_pc_, g_ground_pc_);
+  return std::pair<pcl::PointCloud<pcl::PointXYZ>::Ptr,
+                   pcl::PointCloud<pcl::PointXYZ>::Ptr>(g_not_ground_pc_,
+                                                        g_ground_pc_);
 }
 
 void GroundPlaneFit::estimate_plane_(void) {
@@ -78,7 +83,8 @@ void GroundPlaneFit::estimate_plane_(void) {
   Eigen::Vector4f pc_mean;
   pcl::computeMeanAndCovarianceMatrix(*g_ground_pc_, cov, pc_mean);
   // Singular Value Decomposition: SVD
-  Eigen::JacobiSVD<Eigen::MatrixXf> svd(cov, Eigen::DecompositionOptions::ComputeFullU);
+  Eigen::JacobiSVD<Eigen::MatrixXf> svd(
+      cov, Eigen::DecompositionOptions::ComputeFullU);
   // use the least singular vector as normal
   normal_ = (svd.matrixU().col(2));
   // mean ground seeds value
@@ -95,7 +101,8 @@ void GroundPlaneFit::estimate_plane_(void) {
   // return the equation parameters
 }
 
-void GroundPlaneFit::extract_initial_seeds_(const pcl::PointCloud<pcl::PointXYZ>& p_sorted) {
+void GroundPlaneFit::extract_initial_seeds_(
+    const pcl::PointCloud<pcl::PointXYZ>& p_sorted) {
   // LPR is the mean of low point representative
   double sum = 0;
   int cnt = 0;

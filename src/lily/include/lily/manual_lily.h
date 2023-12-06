@@ -2,7 +2,7 @@
  * @Author: windzu windzu1@gmail.com
  * @Date: 2023-07-05 11:38:22
  * @LastEditors: wind windzu1@gmail.com
- * @LastEditTime: 2023-12-06 19:07:14
+ * @LastEditTime: 2023-12-06 19:10:46
  * @Description:
  * Copyright (c) 2023 by windzu, All Rights Reserved.
  */
@@ -31,14 +31,14 @@
 #include "lily/auto_lily.h"
 #include "lily/calibrator.h"
 #include "lily/manual_lily.h"
+#include "lily/utils.h"
 
-class Lily {
+class ManualLily {
  public:
-  Lily(ros::NodeHandle nh, ros::NodeHandle pnh);
+  ManualLily(ros::NodeHandle nh, ros::NodeHandle pnh);
 
  private:
   bool init();
-  void parse_config();
   void callback(const sensor_msgs::PointCloud2::ConstPtr& msg,
                 const std::string& topic_name);
   void trans_and_pub();
@@ -57,11 +57,7 @@ class Lily {
   std::vector<double> transform_matrix_to_quaternion(const Eigen::Matrix4d& T);
   std::vector<double> transform_matrix_to_translation(
       const Eigen::Matrix4d& T);
-
   std::vector<double> quaternion_to_euler_angles(const std::vector<double>& q);
-  std::vector<double> euler_angles_to_quaternion(
-      const std::vector<double>& euler_angles);
-
   Eigen::Matrix4d calculate_tf_matrix_from_translation_and_rotation(
       const std::vector<double>& translation,
       const std::vector<double>& rotation);
@@ -73,10 +69,11 @@ class Lily {
   ros::NodeHandle nh_;
   ros::NodeHandle pnh_;
   std::string config_path_;
-  bool manual_mode_ = false;
   std::string main_topic_ = "";
 
   int min_points_num_ = 4;  // estimate plane need at least 4 points
+
+  YAML::Node config_;
 
   // variables
   std::vector<ros::Subscriber> subs_;
@@ -93,8 +90,6 @@ class Lily {
   double th_seeds_ = 0.15;
   double th_dist_ = 0.15;
   std::unique_ptr<Calibrator> calibrator_;
-  std::unique_ptr<ManualLily> manual_lily_;
-  std::unique_ptr<AutoLily> auto_lily_;
 
   // dynamic reconfigure
   boost::recursive_mutex mutex_;

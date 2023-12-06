@@ -2,7 +2,7 @@
  * @Author: windzu windzu1@gmail.com
  * @Date: 2023-06-16 16:13:34
  * @LastEditors: wind windzu1@gmail.com
- * @LastEditTime: 2023-10-19 16:11:15
+ * @LastEditTime: 2023-12-06 18:26:17
  * @Description:
  * Copyright (c) 2023 by windzu, All Rights Reserved.
  */
@@ -31,9 +31,11 @@ unsigned char color_map[10][3] = {{255, 255, 255},  // "white"
                                   {80, 30, 180}};   //
 
 std::unordered_map<std::string, Eigen::Matrix4d> Calibrator::process(
-    const std::unordered_map<std::string, pcl::PointCloud<pcl::PointXYZI>::Ptr>& cloud_map,
+    const std::unordered_map<std::string,
+                             pcl::PointCloud<pcl::PointXYZI>::Ptr>& cloud_map,
     const std::string& main_topic,
-    const std::unordered_map<std::string, std::vector<pcl::PointXYZ>>& points_map,
+    const std::unordered_map<std::string, std::vector<pcl::PointXYZ>>&
+        points_map,
     const std::unordered_map<std::string, Eigen::Matrix4d>& tf_matrix_map) {
   main_topic_ = main_topic;
   cloud_map_ = cloud_map;
@@ -59,12 +61,13 @@ std::unordered_map<std::string, Eigen::Matrix4d> Calibrator::process(
   }
 
   // TODO(windzu) : 点云匹配
-  // calibrator.LoadCalibrationData(lidar_points, raw_extrinsics);  // 导入初值标定参数
-  // auto time_begin = std::chrono::steady_clock::now();
+  // calibrator.LoadCalibrationData(lidar_points, raw_extrinsics);  //
+  // 导入初值标定参数 auto time_begin = std::chrono::steady_clock::now();
   // calibrator.Calibrate();  // 标定主函数
   // auto time_end = std::chrono::steady_clock::now();
   // 获得标定结果（刚性变换矩阵）
-  // std::map<int32_t, Eigen::Matrix4d> refined_extrinsics = calibrator.GetFinalTransformation();
+  // std::map<int32_t, Eigen::Matrix4d> refined_extrinsics =
+  // calibrator.GetFinalTransformation();
 
   // stitching and save for visualization
 
@@ -88,8 +91,8 @@ bool Calibrator::ground_calibration() {
     auto& tf_matrix = tf_matrix_map_[topic];
 
     // check if points_map_ has this topic and not empty
-    for (auto points_map_iter = points_map_.begin(); points_map_iter != points_map_.end();
-         points_map_iter++) {
+    for (auto points_map_iter = points_map_.begin();
+         points_map_iter != points_map_.end(); points_map_iter++) {
       if (points_map_iter->first == topic) {
         if (points_map_iter->second.size() != 0) {
           // use this points to calculate ground plane
@@ -125,7 +128,8 @@ bool Calibrator::ground_calibration() {
     normal[2] = first_coefficients->values[2];
 
     // 使用第一次获取的地面平面参数对点云做变换，使点云z轴与地面法向量平行
-    Eigen::Matrix4d first_ret = create_rotate_matrix(normal, z_normal);  // 矫正法向量到z轴(0,0,1)
+    // 矫正法向量到z轴(0,0,1)
+    Eigen::Matrix4d first_ret = create_rotate_matrix(normal, z_normal);
     pcl::transformPointCloud(*cloud, *cloud, first_ret);
 
     // 第二次计算地面平面参数,为了获取地面平面的高度值
@@ -136,7 +140,8 @@ bool Calibrator::ground_calibration() {
     } else {
       sceond_coefficients = ground_plane_extraction(cloud, sensor_height);
     }
-    second_ret(2, 3) = sceond_coefficients->values[3];  // 获取地面与0平面的距离
+    // 获取地面与0平面的距离
+    second_ret(2, 3) = sceond_coefficients->values[3];
     pcl::transformPointCloud(*cloud, *cloud, second_ret);
 
     tf_matrix = second_ret * first_ret * tf_matrix;
@@ -169,16 +174,19 @@ bool Calibrator::icpn() {
 //   int32_t master_id = 0;
 //   auto master_iter = pcs_.find(master_id);
 //   pcl::PointCloud<pcl::PointXYZI> master_pc = master_iter->second;
-//   pcl::PointCloud<pcl::PointXYZI>::Ptr master_pc_ptr = master_pc.makeShared();
-//   PlaneParam master_gplane;
-//   pcl::PointCloud<pcl::PointXYZI>::Ptr master_gcloud(new pcl::PointCloud<pcl::PointXYZI>);
-//   pcl::PointCloud<pcl::PointXYZI>::Ptr master_ngcloud(new pcl::PointCloud<pcl::PointXYZI>);
-//   bool ret = ground_plane_extraction(master_pc_ptr, master_gcloud, master_ngcloud,
-//                                      master_gplane);  // 使用ransac去除地面点
+//   pcl::PointCloud<pcl::PointXYZI>::Ptr master_pc_ptr =
+//   master_pc.makeShared(); PlaneParam master_gplane;
+//   pcl::PointCloud<pcl::PointXYZI>::Ptr master_gcloud(new
+//   pcl::PointCloud<pcl::PointXYZI>); pcl::PointCloud<pcl::PointXYZI>::Ptr
+//   master_ngcloud(new pcl::PointCloud<pcl::PointXYZI>); bool ret =
+//   ground_plane_extraction(master_pc_ptr, master_gcloud, master_ngcloud,
+//                                      master_gplane);  //
+//                                      使用ransac去除地面点
 
-//   registrator_->SetTargetCloud(master_gcloud, master_ngcloud, master_pc_ptr);
-//   registrator_->SetTargetCloud(master_pc_ptr, master_pc_ptr, master_pc_ptr);  // 注册点云
-//   Eigen::Vector3d t_mp(0, 0, -master_gplane.intercept / master_gplane.normal(2));
+//   registrator_->SetTargetCloud(master_gcloud, master_ngcloud,
+//   master_pc_ptr); registrator_->SetTargetCloud(master_pc_ptr, master_pc_ptr,
+//   master_pc_ptr);  // 注册点云 Eigen::Vector3d t_mp(0, 0,
+//   -master_gplane.intercept / master_gplane.normal(2));
 //
 //   for (auto iter = pcs_.begin(); iter != pcs_.end(); iter++) {
 //     int32_t slave_id = iter->first;
@@ -190,28 +198,35 @@ bool Calibrator::icpn() {
 //       return;
 //     }
 //     Eigen::Matrix4d init_ext = init_extrinsics_[slave_id];
-//     pcl::PointCloud<pcl::PointXYZI>::Ptr slave_pc_ptr = slave_pc.makeShared();
-//     pcl::PointCloud<pcl::PointXYZI>::Ptr cloud_after_Condition(new
-//     pcl::PointCloud<pcl::PointXYZI>); PlaneParam slave_gplane;
-//     pcl::PointCloud<pcl::PointXYZI>::Ptr slave_gcloud(new pcl::PointCloud<pcl::PointXYZI>);
-//     pcl::PointCloud<pcl::PointXYZI>::Ptr slave_ngcloud(new pcl::PointCloud<pcl::PointXYZI>);
+//     pcl::PointCloud<pcl::PointXYZI>::Ptr slave_pc_ptr =
+//     slave_pc.makeShared(); pcl::PointCloud<pcl::PointXYZI>::Ptr
+//     cloud_after_Condition(new pcl::PointCloud<pcl::PointXYZI>); PlaneParam
+//     slave_gplane; pcl::PointCloud<pcl::PointXYZI>::Ptr slave_gcloud(new
+//     pcl::PointCloud<pcl::PointXYZI>); pcl::PointCloud<pcl::PointXYZI>::Ptr
+//     slave_ngcloud(new pcl::PointCloud<pcl::PointXYZI>);
 //
 //     // earse the points close to LiDAR
 //     if (slave_id) {
 //       pcl::ConditionAnd<pcl::PointXYZI>::Ptr range_condition(
 //           new pcl::ConditionAnd<pcl::PointXYZI>());
 //       range_condition->addComparison(pcl::FieldComparison<pcl::PointXYZI>::ConstPtr(
-//           new pcl::FieldComparison<pcl::PointXYZI>("x", pcl::ComparisonOps::GT, -1)));
+//           new pcl::FieldComparison<pcl::PointXYZI>("x",
+//           pcl::ComparisonOps::GT, -1)));
 //       range_condition->addComparison(pcl::FieldComparison<pcl::PointXYZI>::ConstPtr(
-//           new pcl::FieldComparison<pcl::PointXYZI>("x", pcl::ComparisonOps::LT, 1)));  //
+//           new pcl::FieldComparison<pcl::PointXYZI>("x",
+//           pcl::ComparisonOps::LT, 1)));  //
 //       range_condition->addComparison(pcl::FieldComparison<pcl::PointXYZI>::ConstPtr(
-//           new pcl::FieldComparison<pcl::PointXYZI>("y", pcl::ComparisonOps::GT, -1.0)));
+//           new pcl::FieldComparison<pcl::PointXYZI>("y",
+//           pcl::ComparisonOps::GT, -1.0)));
 //       range_condition->addComparison(pcl::FieldComparison<pcl::PointXYZI>::ConstPtr(
-//           new pcl::FieldComparison<pcl::PointXYZI>("y", pcl::ComparisonOps::LT, 1)));
+//           new pcl::FieldComparison<pcl::PointXYZI>("y",
+//           pcl::ComparisonOps::LT, 1)));
 //       range_condition->addComparison(pcl::FieldComparison<pcl::PointXYZI>::ConstPtr(
-//           new pcl::FieldComparison<pcl::PointXYZI>("z", pcl::ComparisonOps::GT, -1)));
+//           new pcl::FieldComparison<pcl::PointXYZI>("z",
+//           pcl::ComparisonOps::GT, -1)));
 //       range_condition->addComparison(pcl::FieldComparison<pcl::PointXYZI>::ConstPtr(
-//           new pcl::FieldComparison<pcl::PointXYZI>("z", pcl::ComparisonOps::LT, 1)));
+//           new pcl::FieldComparison<pcl::PointXYZI>("z",
+//           pcl::ComparisonOps::LT, 1)));
 //
 //       pcl::ConditionalRemoval<pcl::PointXYZI> condition;
 //       condition.setCondition(range_condition);
@@ -226,7 +241,8 @@ bool Calibrator::icpn() {
 //       std::vector<float> pointNKNSquaredDistance(K);
 //       std::vector<pcl::PointXYZI> DeleteData;
 //       int num = 0;
-//       for (auto iter = cloud_after_Condition->begin(); iter != cloud_after_Condition->end();
+//       for (auto iter = cloud_after_Condition->begin(); iter !=
+//       cloud_after_Condition->end();
 //            iter++) {
 //         searchPoint.x = iter->x;
 //         searchPoint.y = iter->y;
@@ -252,8 +268,8 @@ bool Calibrator::icpn() {
 //       }
 //     }
 //
-//     ret = ground_plane_extraction(slave_pc_ptr, slave_gcloud, slave_ngcloud, slave_gplane);
-//     if (!ret) {
+//     ret = ground_plane_extraction(slave_pc_ptr, slave_gcloud, slave_ngcloud,
+//     slave_gplane); if (!ret) {
 //       LOGE("ground plane extraction failed.\n");
 //       continue;
 //     }
@@ -265,17 +281,20 @@ bool Calibrator::icpn() {
 //     pcl::PointCloud<pcl::PointXYZI>::Ptr slave_original_gcloud(new
 //     pcl::PointCloud<pcl::PointXYZI>);
 //
-//     ret = ground_plane_extraction(slave_original_pc_ptr, slave_original_gcloud,
-//                                   slave_original_ngcloud, slave_original_gplane);
-//     registrator_->SetSourceCloud(slave_original_gcloud, slave_original_ngcloud,
+//     ret = ground_plane_extraction(slave_original_pc_ptr,
+//     slave_original_gcloud,
+//                                   slave_original_ngcloud,
+//                                   slave_original_gplane);
+//     registrator_->SetSourceCloud(slave_original_gcloud,
+//     slave_original_ngcloud,
 //                                  slave_original_pc_ptr);
 //
 //     // ground normal direction
-//     Eigen::Vector3f ground_point(0, 0, (slave_gplane.intercept) / (-slave_gplane.normal(2)));
-//     Eigen::Vector3f point2plane_vector;
-//     int Ontheground = 0;
-//     int Undertheground = 0;
-//     for (auto iter = slave_ngcloud->begin(); iter < slave_ngcloud->end() - 100; iter += 100) {
+//     Eigen::Vector3f ground_point(0, 0, (slave_gplane.intercept) /
+//     (-slave_gplane.normal(2))); Eigen::Vector3f point2plane_vector; int
+//     Ontheground = 0; int Undertheground = 0; for (auto iter =
+//     slave_ngcloud->begin(); iter < slave_ngcloud->end() - 100; iter += 100)
+//     {
 //       Eigen::Vector3f samplePoint(iter->x, iter->y, iter->z);
 //       point2plane_vector = samplePoint - ground_point;
 //       if ((point2plane_vector(0) * slave_gplane.normal(0) +
@@ -287,14 +306,16 @@ bool Calibrator::icpn() {
 //       }
 //     }
 //     // ground plane align
-//     Eigen::Vector3d rot_axis2 = slave_gplane.normal.cross(master_gplane.normal);
-//     rot_axis2.normalize();
-//     double alpha2 = std::acos(slave_gplane.normal.dot(master_gplane.normal));
+//     Eigen::Vector3d rot_axis2 =
+//     slave_gplane.normal.cross(master_gplane.normal); rot_axis2.normalize();
+//     double alpha2 =
+//     std::acos(slave_gplane.normal.dot(master_gplane.normal));
 //     Eigen::Matrix3d R_ms;
 //     R_ms = Eigen::AngleAxisd(alpha2, rot_axis2);
-//     Eigen::Vector3d slave_intcpt_local(0, 0, -slave_gplane.intercept / slave_gplane.normal(2));
-//     Eigen::Vector3d slave_intcpt_master = R_ms * slave_intcpt_local;
-//     Eigen::Vector3d t_ms(0, 0, t_mp(2) - slave_intcpt_master(2));
+//     Eigen::Vector3d slave_intcpt_local(0, 0, -slave_gplane.intercept /
+//     slave_gplane.normal(2)); Eigen::Vector3d slave_intcpt_master = R_ms *
+//     slave_intcpt_local; Eigen::Vector3d t_ms(0, 0, t_mp(2) -
+//     slave_intcpt_master(2));
 //
 //     Eigen::Matrix4d T_ms = Eigen::Matrix4d::Identity();
 //     T_ms.block<3, 1>(0, 3) = t_ms;
@@ -309,9 +330,10 @@ bool Calibrator::icpn() {
 //       alpha2 = std::acos(slave_gplane.normal.dot(master_gplane.normal));
 //       R_ms = Eigen::AngleAxisd(alpha2, rot_axis2);
 //       slave_intcpt_local = Eigen::Vector3d(0, 0, -slave_gplane.intercept /
-//       slave_gplane.normal(2)); slave_intcpt_master = R_ms * slave_intcpt_local; t_ms =
-//       Eigen::Vector3d(0, 0, t_mp(2) - slave_intcpt_master(2)); T_ms.block<3, 1>(0, 3) = t_ms;
-//       T_ms.block<3, 3>(0, 0) = R_ms;
+//       slave_gplane.normal(2)); slave_intcpt_master = R_ms *
+//       slave_intcpt_local; t_ms = Eigen::Vector3d(0, 0, t_mp(2) -
+//       slave_intcpt_master(2)); T_ms.block<3, 1>(0, 3) = t_ms; T_ms.block<3,
+//       3>(0, 0) = R_ms;
 //     }
 //     curr_transform = init_ext * T_ms;
 //
@@ -326,8 +348,9 @@ bool Calibrator::icpn() {
 //     Eigen::Vector3f euler = rotation_matrix_to_euler_angles(rot);
 //     // 计算旋转矩阵的Z分量
 //     Eigen::Matrix3d R;
-//     R << cos(euler[2]), -sin(euler[2]), 0.0, sin(euler[2]), cos(euler[2]), 0.0, 0.0, 0.0, 1.0;
-//     final_opt_result.block<3, 3>(0, 0) = R;  // 去除刚性变换中与Z轴方向有关的旋转和平移因素
+//     R << cos(euler[2]), -sin(euler[2]), 0.0, sin(euler[2]), cos(euler[2]),
+//     0.0, 0.0, 0.0, 1.0; final_opt_result.block<3, 3>(0, 0) = R;  //
+//     去除刚性变换中与Z轴方向有关的旋转和平移因素
 //     refined_extrinsics_.insert(std::make_pair(slave_id, final_opt_result));
 //   }
 //
@@ -336,7 +359,8 @@ bool Calibrator::icpn() {
 
 void Calibrator::stiching() {
   // stitching and save for visualization
-  pcl::PointCloud<pcl::PointXYZRGB>::Ptr all_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+  pcl::PointCloud<pcl::PointXYZRGB>::Ptr all_cloud(
+      new pcl::PointCloud<pcl::PointXYZRGB>);
   for (auto iter = cloud_map_.begin(); iter != cloud_map_.end(); iter++) {
     auto topic = iter->first;
     auto cloud = iter->second;
@@ -367,7 +391,8 @@ void Calibrator::stiching() {
 }
 
 // 旋转矩阵转欧拉角
-Eigen::Vector3d Calibrator::rotation_matrix_to_euler_angles(const Eigen::Matrix3d& R) {
+Eigen::Vector3d Calibrator::rotation_matrix_to_euler_angles(
+    const Eigen::Matrix3d& R) {
   // assert(isRotationMatrix(R));
   double sy = sqrt(R(0, 0) * R(0, 0) + R(1, 0) * R(1, 0));
 
@@ -387,7 +412,8 @@ Eigen::Vector3d Calibrator::rotation_matrix_to_euler_angles(const Eigen::Matrix3
 }
 
 // 获取两个法向量之间的转换刚性矩阵
-Eigen::Matrix4d Calibrator::create_rotate_matrix(Eigen::Vector3f before, Eigen::Vector3f after) {
+Eigen::Matrix4d Calibrator::create_rotate_matrix(Eigen::Vector3f before,
+                                                 Eigen::Vector3f after) {
   before.normalize();
   after.normalize();
 
@@ -396,27 +422,37 @@ Eigen::Matrix4d Calibrator::create_rotate_matrix(Eigen::Vector3f before, Eigen::
   p_rotate.normalize();
 
   Eigen::Matrix4d rotationMatrix = Eigen::Matrix4d::Identity();
-  rotationMatrix(0, 0) = cos(angle) + p_rotate[0] * p_rotate[0] * (1 - cos(angle));
+  rotationMatrix(0, 0) =
+      cos(angle) + p_rotate[0] * p_rotate[0] * (1 - cos(angle));
   rotationMatrix(0, 1) =
       p_rotate[0] * p_rotate[1] *
       (1 - cos(angle) -
-       p_rotate[2] * sin(angle));  // 这里跟公式比多了一个括号，但是看实验结果它是对的
-  rotationMatrix(0, 2) = p_rotate[1] * sin(angle) + p_rotate[0] * p_rotate[2] * (1 - cos(angle));
+       p_rotate[2] *
+           sin(angle));  // 这里跟公式比多了一个括号，但是看实验结果它是对的
+  rotationMatrix(0, 2) =
+      p_rotate[1] * sin(angle) + p_rotate[0] * p_rotate[2] * (1 - cos(angle));
 
-  rotationMatrix(1, 0) = p_rotate[2] * sin(angle) + p_rotate[0] * p_rotate[1] * (1 - cos(angle));
-  rotationMatrix(1, 1) = cos(angle) + p_rotate[1] * p_rotate[1] * (1 - cos(angle));
-  rotationMatrix(1, 2) = -p_rotate[0] * sin(angle) + p_rotate[1] * p_rotate[2] * (1 - cos(angle));
+  rotationMatrix(1, 0) =
+      p_rotate[2] * sin(angle) + p_rotate[0] * p_rotate[1] * (1 - cos(angle));
+  rotationMatrix(1, 1) =
+      cos(angle) + p_rotate[1] * p_rotate[1] * (1 - cos(angle));
+  rotationMatrix(1, 2) =
+      -p_rotate[0] * sin(angle) + p_rotate[1] * p_rotate[2] * (1 - cos(angle));
 
-  rotationMatrix(2, 0) = -p_rotate[1] * sin(angle) + p_rotate[0] * p_rotate[2] * (1 - cos(angle));
-  rotationMatrix(2, 1) = p_rotate[0] * sin(angle) + p_rotate[1] * p_rotate[2] * (1 - cos(angle));
-  rotationMatrix(2, 2) = cos(angle) + p_rotate[2] * p_rotate[2] * (1 - cos(angle));
+  rotationMatrix(2, 0) =
+      -p_rotate[1] * sin(angle) + p_rotate[0] * p_rotate[2] * (1 - cos(angle));
+  rotationMatrix(2, 1) =
+      p_rotate[0] * sin(angle) + p_rotate[1] * p_rotate[2] * (1 - cos(angle));
+  rotationMatrix(2, 2) =
+      cos(angle) + p_rotate[2] * p_rotate[2] * (1 - cos(angle));
 
   return rotationMatrix;
 }
 
 // 使用gpf算法提取地面并获取法向量
 pcl::ModelCoefficients::Ptr Calibrator::ground_plane_extraction(
-    const pcl::PointCloud<pcl::PointXYZI>::Ptr& in_cloud, double sensor_height) {
+    const pcl::PointCloud<pcl::PointXYZI>::Ptr& in_cloud,
+    double sensor_height) {
   pcl::PointCloud<pcl::PointXYZ>::Ptr tmp(new pcl::PointCloud<pcl::PointXYZ>);
   tmp->points.resize(in_cloud->size());
   for (size_t i = 0; i < tmp->points.size(); i++) {
@@ -429,8 +465,8 @@ pcl::ModelCoefficients::Ptr Calibrator::ground_plane_extraction(
     }
   }
 
-  // GroundPlaneFit* gpf = new GroundPlaneFit(sensor_height, num_iter_, num_lpr_, th_seeds_,
-  // th_dist_);
+  // GroundPlaneFit* gpf = new GroundPlaneFit(sensor_height, num_iter_,
+  // num_lpr_, th_seeds_, th_dist_);
   GroundPlaneFit gpf(sensor_height, num_iter_, num_lpr_, th_seeds_, th_dist_);
 
   gpf.process(tmp);
@@ -455,7 +491,8 @@ pcl::ModelCoefficients::Ptr Calibrator::compute_plane_normal(
   seg.setModelType(pcl::SACMODEL_PLANE);
   seg.setMethodType(pcl::SAC_RANSAC);
   seg.setMaxIterations(1000);
-  seg.setDistanceThreshold(0.01);  // You might need to adjust this value based on your data
+  seg.setDistanceThreshold(
+      0.01);  // You might need to adjust this value based on your data
 
   seg.setInputCloud(cloud);
   seg.segment(*inliers, *coefficients);
@@ -475,7 +512,8 @@ pcl::ModelCoefficients::Ptr Calibrator::compute_plane_normal(
 //   std::vector<Eigen::Matrix4d> calib_list_tmp;  // 用于获取标定结果
 //   calib_list_tmp.push_back(top_ret);
 //   int count = 0;
-//   for (auto iter = refined_extrinsics.begin(); iter != refined_extrinsics.end();
+//   for (auto iter = refined_extrinsics.begin(); iter !=
+//   refined_extrinsics.end();
 //        iter++) {  // 依次获取标定结果
 //     int32_t slave_id = iter->first;
 //     Eigen::Matrix4d transform = iter->second;  // 获取点云的刚性变换矩阵
@@ -488,9 +526,9 @@ pcl::ModelCoefficients::Ptr Calibrator::compute_plane_normal(
 //     Eigen::Vector3f euler = rotation_matrix_to_euler_angles(rot);
 //     // 计算旋转矩阵的Z分量
 //     Eigen::Matrix3d R;
-//     R << cos(euler[2]), -sin(euler[2]), 0.0, sin(euler[2]), cos(euler[2]), 0.0, 0.0, 0.0, 1.0;
-//     transform.block<3, 3>(0, 0) = R;  // 去除刚性变换中与Z轴方向有关的旋转和平移因素
-//     transform(2, 3) = 0;
+//     R << cos(euler[2]), -sin(euler[2]), 0.0, sin(euler[2]), cos(euler[2]),
+//     0.0, 0.0, 0.0, 1.0; transform.block<3, 3>(0, 0) = R;  //
+//     去除刚性变换中与Z轴方向有关的旋转和平移因素 transform(2, 3) = 0;
 //     pcl::transformPointCloud(slave_pc, trans_cloud, transform);  // 点云转换
 //     calib_list_tmp.push_back(transform);
 //     // trans_cloud=slave_pc;

@@ -8,7 +8,7 @@ AllowShortFunctionsOnASingleLine:       None
 DerivePointerAlignment:                 false
 PointerAlignment:                       Left
 CommentPragmas:                         '^ NOLINT'
-ColumnLimit:                            100
+ColumnLimit:                            79
 IncludeCategories:
   - Regex:                              '^<(.*)(\.h>)$'
     Priority:                           1

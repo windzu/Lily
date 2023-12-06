@@ -37,13 +37,18 @@
 class Calibrator {
  public:
   Calibrator(int num_iter, int num_lpr, double th_seeds, double th_dist)
-      : num_iter_(num_iter), num_lpr_(num_lpr), th_seeds_(th_seeds), th_dist_(th_dist) {
+      : num_iter_(num_iter),
+        num_lpr_(num_lpr),
+        th_seeds_(th_seeds),
+        th_dist_(th_dist) {
   }
 
   std::unordered_map<std::string, Eigen::Matrix4d> process(
-      const std::unordered_map<std::string, pcl::PointCloud<pcl::PointXYZI>::Ptr>& cloud_map,
+      const std::unordered_map<
+          std::string, pcl::PointCloud<pcl::PointXYZI>::Ptr>& cloud_map,
       const std::string& main_topic,
-      const std::unordered_map<std::string, std::vector<pcl::PointXYZ>>& points_map,
+      const std::unordered_map<std::string, std::vector<pcl::PointXYZ>>&
+          points_map,
       const std::unordered_map<std::string, Eigen::Matrix4d>& tf_matrix_map);
 
   bool ground_calibration();
@@ -54,14 +59,17 @@ class Calibrator {
 
  private:
   Eigen::Vector3d rotation_matrix_to_euler_angles(const Eigen::Matrix3d& R);
-  Eigen::Matrix4d create_rotate_matrix(Eigen::Vector3f before, Eigen::Vector3f after);
+  Eigen::Matrix4d create_rotate_matrix(Eigen::Vector3f before,
+                                       Eigen::Vector3f after);
 
   // 地面提取
   pcl::ModelCoefficients::Ptr ground_plane_extraction(
-      const pcl::PointCloud<pcl::PointXYZI>::Ptr& in_cloud, double sensor_height);
+      const pcl::PointCloud<pcl::PointXYZI>::Ptr& in_cloud,
+      double sensor_height);
 
   // 使用RANSAC算法对少量的地面点拟合平面
-  pcl::ModelCoefficients::Ptr compute_plane_normal(pcl::PointCloud<pcl::PointXYZI>::Ptr cloud);
+  pcl::ModelCoefficients::Ptr compute_plane_normal(
+      pcl::PointCloud<pcl::PointXYZI>::Ptr cloud);
 
  private:
   // const double sensor_height = 1.5;
@@ -71,7 +79,8 @@ class Calibrator {
   double th_dist_ = 0.06;
 
   std::string main_topic_;
-  std::unordered_map<std::string, pcl::PointCloud<pcl::PointXYZI>::Ptr> cloud_map_;
+  std::unordered_map<std::string, pcl::PointCloud<pcl::PointXYZI>::Ptr>
+      cloud_map_;
   std::unordered_map<std::string, Eigen::Matrix4d> tf_matrix_map_;
   std::unordered_map<std::string, std::vector<pcl::PointXYZ>> points_map_;
 

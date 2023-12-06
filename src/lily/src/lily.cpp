@@ -2,7 +2,7 @@
  * @Author: windzu windzu1@gmail.com
  * @Date: 2023-06-16 17:34:42
  * @LastEditors: wind windzu1@gmail.com
- * @LastEditTime: 2023-11-24 15:33:50
+ * @LastEditTime: 2023-12-06 19:08:03
  * @Description:
  * Copyright (c) 2023 by windzu, All Rights Reserved.
  */
@@ -13,8 +13,14 @@ Lily::Lily(ros::NodeHandle nh, ros::NodeHandle pnh) {
   nh_ = nh;
   pnh_ = pnh;
 
-  pnh_.param<std::string>("config_path", config_path_, "");
   pnh_.param<bool>("manual_mode", manual_mode_, "");
+  if (manual_mode_) {
+    manual_lily_.reset(new ManualLily(nh_, pnh_));
+    manual_lily_->init();
+  } else {
+    auto_lily_.reset(new AutoLily(nh_, pnh_));
+    auto_lily_->init();
+  }
 
   if (!init()) {
     ROS_ERROR("init failed");
@@ -22,7 +28,9 @@ Lily::Lily(ros::NodeHandle nh, ros::NodeHandle pnh) {
   }
 
   if (manual_mode_) {
-    server_.reset(new dynamic_reconfigure::Server<dynamic_tf_config::dynamicConfig>(mutex_, pnh_));
+    server_.reset(
+        new dynamic_reconfigure::Server<dynamic_tf_config::dynamicConfig>(
+            mutex_, pnh_));
     server_f_ = boost::bind(&Lily::dynamic_config_callback, this, _1);
     server_->setCallback(server_f_);
 
@@ -50,20 +58,24 @@ Lily::Lily(ros::NodeHandle nh, ros::NodeHandle pnh) {
     // echo tf_matrix_map_
     std::cout << "before calibration:" << std::endl;
     std::cout << "-------------------------" << std::endl;
-    for (auto iter = tf_matrix_map_.begin(); iter != tf_matrix_map_.end(); iter++) {
+    for (auto iter = tf_matrix_map_.begin(); iter != tf_matrix_map_.end();
+         iter++) {
       std::cout << iter->first << std::endl;
       std::cout << iter->second << std::endl;
     }
     std::cout << "-------------------------" << std::endl;
 
     // calibration
-    calibrator_.reset(new Calibrator(num_iter_, num_lpr_, th_seeds_, th_dist_));
-    tf_matrix_map_ = calibrator_->process(cloud_map_, main_topic_, points_map_, tf_matrix_map_);
+    calibrator_.reset(
+        new Calibrator(num_iter_, num_lpr_, th_seeds_, th_dist_));
+    tf_matrix_map_ = calibrator_->process(cloud_map_, main_topic_, points_map_,
+                                          tf_matrix_map_);
 
     // debug
     std::cout << "after calibration:" << std::endl;
     std::cout << "-------------------------" << std::endl;
-    for (auto iter = tf_matrix_map_.begin(); iter != tf_matrix_map_.end(); iter++) {
+    for (auto iter = tf_matrix_map_.begin(); iter != tf_matrix_map_.end();
+         iter++) {
       std::cout << iter->first << std::endl;
       std::cout << iter->second << std::endl;
     }
@@ -90,11 +102,14 @@ bool Lily::init() {
     // rotation is a vector of [w, x, y, z]
     std::vector<double> translation =
         iter->second["transform"]["translation"].as<std::vector<double>>();
-    std::vector<double> rotation = iter->second["transform"]["rotation"].as<std::vector<double>>();
+    std::vector<double> rotation =
+        iter->second["transform"]["rotation"].as<std::vector<double>>();
 
-    std::vector<double> euler_angles_vec = quaternion_to_euler_angles(rotation);
+    std::vector<double> euler_angles_vec =
+        quaternion_to_euler_angles(rotation);
     Eigen::Matrix4d tf_matrix =
-        calculate_tf_matrix_from_translation_and_rotation(translation, rotation);
+        calculate_tf_matrix_from_translation_and_rotation(translation,
+                                                          rotation);
 
     // set dynamic_config_map_
     dynamic_tf_config::dynamicConfig config;
@@ -117,7 +132,8 @@ bool Lily::init() {
     bool load_from_file = iter->second["load_from_file"].as<bool>();
     if (load_from_file) {
       std::string file_path = iter->second["file_path"].as<std::string>();
-      pcl::PointCloud<pcl::PointXYZI>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZI>);
+      pcl::PointCloud<pcl::PointXYZI>::Ptr cloud(
+          new pcl::PointCloud<pcl::PointXYZI>);
       if (pcl::io::loadPCDFile<pcl::PointXYZI>(file_path, *cloud) == -1) {
         ROS_ERROR("load pcd file %s failed", file_path.c_str());
         return false;
@@ -132,13 +148,17 @@ bool Lily::init() {
     if (iter->second["use_points"]) {
       // subscribe /clicked_point topic
       ros::Subscriber sub = nh_.subscribe<geometry_msgs::PointStamped>(
-          "/clicked_point", 1, boost::bind(&Lily::clicked_point_callback, this, _1, topic));
+          "/clicked_point", 1,
+          boost::bind(&Lily::clicked_point_callback, this, _1, topic));
 
       // publish transformed cloud and selected points from cloud
-      ros::Publisher pub = nh_.advertise<sensor_msgs::PointCloud2>(topic + "/calibrated", 1);
+      ros::Publisher pub =
+          nh_.advertise<sensor_msgs::PointCloud2>(topic + "/calibrated", 1);
 
-      pcl::PointCloud<pcl::PointXYZI>::Ptr transformed_cloud(new pcl::PointCloud<pcl::PointXYZI>);
-      pcl::transformPointCloud(*(cloud_map_[topic]), *transformed_cloud, tf_matrix);
+      pcl::PointCloud<pcl::PointXYZI>::Ptr transformed_cloud(
+          new pcl::PointCloud<pcl::PointXYZI>);
+      pcl::transformPointCloud(*(cloud_map_[topic]), *transformed_cloud,
+                               tf_matrix);
       sensor_msgs::PointCloud2::Ptr pc_msg(new sensor_msgs::PointCloud2);
       pcl::toROSMsg(*transformed_cloud, *pc_msg);
 
@@ -158,7 +178,8 @@ bool Lily::init() {
 
     ros::Subscriber sub = nh_.subscribe<sensor_msgs::PointCloud2>(
         topic, 1, boost::bind(&Lily::callback, this, _1, topic));
-    ros::Publisher pub = nh_.advertise<sensor_msgs::PointCloud2>(topic + "/calibrated", 1);
+    ros::Publisher pub =
+        nh_.advertise<sensor_msgs::PointCloud2>(topic + "/calibrated", 1);
 
     subs_.push_back(sub);
     pubs_map_[topic] = pub;
@@ -166,6 +187,120 @@ bool Lily::init() {
   }
 
   return true;
+}
+
+void Lily::parse_config() {
+  // 1. load config
+  config_ = YAML::LoadFile(config_path_);
+
+  // 2, iter config_
+  for (auto iter = config_.begin(); iter != config_.end(); iter++) {
+    std::string topic = iter->first.as<std::string>();
+
+    // translation is a vector of [x, y, z]
+    // rotation is a vector of [w, x, y, z]
+    // rotation_euler is a vector of [roll, pitch, yaw]
+    std::vector<double> translation =
+        iter->second["transform"]["translation"].as<std::vector<double>>();
+    std::vector<double> rotation =
+        iter->second["transform"]["rotation"].as<std::vector<double>>();
+    std::vector<double> rotation_euler =
+        iter->second["transform"]["rotation_euler"].as<std::vector<double>>();
+
+    // check if update rotation_euler from rotation
+    if (rotation[0] != 1 || rotation[1] != 0 || rotation[2] != 0 ||
+        rotation[3] != 0) {
+      rotation_euler = quaternion_to_euler_angles(rotation);
+    }
+    // check if update rotation from rotation_euler
+    if (rotation[0] == 1 && rotation[1] == 0 && rotation[2] == 0 &&
+        rotation[3] == 0) {
+      if (rotation_euler[0] != 0 || rotation_euler[1] != 0 ||
+          rotation_euler[2] != 0) {
+        rotation = euler_angles_to_quaternion(rotation_euler);
+      }
+    }
+
+    Eigen::Matrix4d tf_matrix =
+        calculate_tf_matrix_from_translation_and_rotation(translation,
+                                                          rotation);
+
+    // set dynamic_config_map_
+    dynamic_tf_config::dynamicConfig config;
+    config.lidar_topic = topic;
+    config.x = translation[0];
+    config.y = translation[1];
+    config.z = translation[2];
+    config.roll = rotation_euler[0];
+    config.pitch = rotation_euler[1];
+    config.yaw = rotation_euler[2];
+    dynamic_config_map_[topic] = config;
+
+    // find main topic
+    bool is_main = iter->second["is_main"].as<bool>();
+    if (is_main) {
+      main_topic_ = topic;
+    }
+
+    // check if need load from pcd file
+    bool load_from_file = iter->second["load_from_file"].as<bool>();
+    if (load_from_file) {
+      std::string file_path = iter->second["file_path"].as<std::string>();
+      pcl::PointCloud<pcl::PointXYZI>::Ptr cloud(
+          new pcl::PointCloud<pcl::PointXYZI>);
+      if (pcl::io::loadPCDFile<pcl::PointXYZI>(file_path, *cloud) == -1) {
+        ROS_ERROR("load pcd file %s failed", file_path.c_str());
+        return false;
+      }
+      cloud_map_[topic] = cloud;
+    } else {
+      cloud_map_[topic] = nullptr;
+    }
+
+    // load points
+    points_map_[topic] = std::vector<pcl::PointXYZ>();
+    if (iter->second["use_points"]) {
+      // subscribe /clicked_point topic
+      ros::Subscriber sub = nh_.subscribe<geometry_msgs::PointStamped>(
+          "/clicked_point", 1,
+          boost::bind(&Lily::clicked_point_callback, this, _1, topic));
+
+      // publish transformed cloud and selected points from cloud
+      ros::Publisher pub =
+          nh_.advertise<sensor_msgs::PointCloud2>(topic + "/calibrated", 1);
+
+      pcl::PointCloud<pcl::PointXYZI>::Ptr transformed_cloud(
+          new pcl::PointCloud<pcl::PointXYZI>);
+      pcl::transformPointCloud(*(cloud_map_[topic]), *transformed_cloud,
+                               tf_matrix);
+      sensor_msgs::PointCloud2::Ptr pc_msg(new sensor_msgs::PointCloud2);
+      pcl::toROSMsg(*transformed_cloud, *pc_msg);
+
+      pc_msg->header.frame_id = "base_link";
+
+      // publish
+      pub.publish(pc_msg);
+
+      // ros spin
+      ros::Rate rate(10);
+      while (ros::ok() && points_map_[topic].size() < min_points_num_) {
+        pub.publish(pc_msg);
+        ros::spinOnce();
+        rate.sleep();
+      }
+    }
+
+    ros::Subscriber sub = nh_.subscribe<sensor_msgs::PointCloud2>(
+        topic, 1, boost::bind(&Lily::callback, this, _1, topic));
+    ros::Publisher pub =
+        nh_.advertise<sensor_msgs::PointCloud2>(topic + "/calibrated", 1);
+
+    subs_.push_back(sub);
+    pubs_map_[topic] = pub;
+    tf_matrix_map_[topic] = tf_matrix;
+  }
+
+  return;
 }
 
 bool Lily::cloud_map_full_check() {
@@ -179,12 +314,14 @@ bool Lily::cloud_map_full_check() {
 
 void Lily::save_config() {
   if (manual_mode_) {
-    for (auto iter = dynamic_config_map_.begin(); iter != dynamic_config_map_.end(); iter++) {
+    for (auto iter = dynamic_config_map_.begin();
+         iter != dynamic_config_map_.end(); iter++) {
       std::string topic = iter->first;
       dynamic_tf_config::dynamicConfig dynamic_config = iter->second;
 
       Eigen::Matrix4f tf_matrix = Eigen::Matrix4f::Identity();
-      Eigen::Translation3f tl(dynamic_config.x, dynamic_config.y, dynamic_config.z);
+      Eigen::Translation3f tl(dynamic_config.x, dynamic_config.y,
+                              dynamic_config.z);
       Eigen::AngleAxisf rot_x(dynamic_config.roll, Eigen::Vector3f::UnitX());
       Eigen::AngleAxisf rot_y(dynamic_config.pitch, Eigen::Vector3f::UnitY());
       Eigen::AngleAxisf rot_z(dynamic_config.yaw, Eigen::Vector3f::UnitZ());
@@ -193,7 +330,8 @@ void Lily::save_config() {
       // convert transform matrix to translation and rotation
       std::vector<double> translation_vec =
           transform_matrix_to_translation(tf_matrix.cast<double>());
-      std::vector<double> quaternion_vec = transform_matrix_to_quaternion(tf_matrix.cast<double>());
+      std::vector<double> quaternion_vec =
+          transform_matrix_to_quaternion(tf_matrix.cast<double>());
       std::vector<double> euler_angles_vec =
           transform_matrix_to_euler_angles(tf_matrix.cast<double>());
 
@@ -204,14 +342,16 @@ void Lily::save_config() {
     }
 
   } else {
-    for (auto iter = tf_matrix_map_.begin(); iter != tf_matrix_map_.end(); iter++) {
+    for (auto iter = tf_matrix_map_.begin(); iter != tf_matrix_map_.end();
+         iter++) {
       std::string topic = iter->first;
       Eigen::Matrix4d tf_matrix = iter->second;
 
       // convert transform matrix to translation and rotation
       std::vector<double> translation_vec =
           transform_matrix_to_translation(tf_matrix.cast<double>());
-      std::vector<double> quaternion_vec = transform_matrix_to_quaternion(tf_matrix.cast<double>());
+      std::vector<double> quaternion_vec =
+          transform_matrix_to_quaternion(tf_matrix.cast<double>());
       std::vector<double> euler_angles_vec =
           transform_matrix_to_euler_angles(tf_matrix.cast<double>());
 
@@ -257,8 +397,10 @@ void Lily::save_config() {
   return;
 }
 
-void Lily::callback(const sensor_msgs::PointCloud2::ConstPtr& msg, const std::string& topic_name) {
-  pcl::PointCloud<pcl::PointXYZI>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZI>);
+void Lily::callback(const sensor_msgs::PointCloud2::ConstPtr& msg,
+                    const std::string& topic_name) {
+  pcl::PointCloud<pcl::PointXYZI>::Ptr cloud(
+      new pcl::PointCloud<pcl::PointXYZI>);
   pcl::fromROSMsg(*msg, *cloud);
   cloud_map_[topic_name] = cloud;
   return;
@@ -268,7 +410,8 @@ void Lily::trans_and_pub() {
   for (auto iter = cloud_map_.begin(); iter != cloud_map_.end(); iter++) {
     if (iter->second != nullptr) {
       std::string topic = iter->first;
-      pcl::PointCloud<pcl::PointXYZI>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZI>);
+      pcl::PointCloud<pcl::PointXYZI>::Ptr cloud(
+          new pcl::PointCloud<pcl::PointXYZI>);
       pcl::transformPointCloud(*(iter->second), *cloud, tf_matrix_map_[topic]);
       sensor_msgs::PointCloud2::Ptr pc_msg(new sensor_msgs::PointCloud2);
       pcl::toROSMsg(*cloud, *pc_msg);
@@ -279,8 +422,9 @@ void Lily::trans_and_pub() {
   return;
 }
 
-void Lily::clicked_point_callback(const geometry_msgs::PointStamped::ConstPtr& msg,
-                                  const std::string& topic_name) {
+void Lily::clicked_point_callback(
+    const geometry_msgs::PointStamped::ConstPtr& msg,
+    const std::string& topic_name) {
   if (points_map_.find(topic_name) == points_map_.end()) {
     ROS_ERROR("topic %s not in points_map_", topic_name.c_str());
     return;
@@ -293,7 +437,8 @@ void Lily::clicked_point_callback(const geometry_msgs::PointStamped::ConstPtr& m
   points_map_[topic_name].push_back(point);
 
   // ros info
-  ROS_INFO("topic %s, point: (%f, %f, %f)", topic_name.c_str(), point.x, point.y, point.z);
+  ROS_INFO("topic %s, point: (%f, %f, %f)", topic_name.c_str(), point.x,
+           point.y, point.z);
 
   if (points_map_[topic_name].size() == min_points_num_) {
     //
@@ -362,7 +507,8 @@ void Lily::flash_status_bar() {
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // utils
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-Eigen::Vector3d Lily::rotation_matrix_to_euler_angles(const Eigen::Matrix3d& R) {
+Eigen::Vector3d Lily::rotation_matrix_to_euler_angles(
+    const Eigen::Matrix3d& R) {
   // assert(isRotationMatrix(R));
   double sy = sqrt(R(0, 0) * R(0, 0) + R(1, 0) * R(1, 0));
 
@@ -381,71 +527,77 @@ Eigen::Vector3d Lily::rotation_matrix_to_euler_angles(const Eigen::Matrix3d& R) 
   return Eigen::Vector3d(x, y, z);
 }
 
-std::vector<double> Lily::transform_matrix_to_euler_angles(const Eigen::Matrix4d& T) {
+std::vector<double> Lily::transform_matrix_to_euler_angles(
+    const Eigen::Matrix4d& T) {
   Eigen::Matrix3d R = T.block<3, 3>(0, 0);
   Eigen::Vector3d euler_angles = rotation_matrix_to_euler_angles(R);
-  std::vector<double> euler_angles_vec(euler_angles.data(),
-                                       euler_angles.data() + euler_angles.size());
+  std::vector<double> euler_angles_vec(
+      euler_angles.data(), euler_angles.data() + euler_angles.size());
   return euler_angles_vec;
 }
 
-std::vector<double> Lily::transform_matrix_to_quaternion(const Eigen::Matrix4d& T) {
+std::vector<double> Lily::transform_matrix_to_quaternion(
+    const Eigen::Matrix4d& T) {
   Eigen::Matrix3d R = T.block<3, 3>(0, 0);
   Eigen::Quaterniond quat(R);
   quat.normalize();  // 正规化四元数以确保其表示有效的旋转
-  Eigen::Vector4d quaternion = Eigen::Vector4d(quat.w(), quat.x(), quat.y(), quat.z());
-  std::vector<double> quaternion_vec(quaternion.data(), quaternion.data() + quaternion.size());
+  Eigen::Vector4d quaternion =
+      Eigen::Vector4d(quat.w(), quat.x(), quat.y(), quat.z());
+  std::vector<double> quaternion_vec(quaternion.data(),
+                                     quaternion.data() + quaternion.size());
   return quaternion_vec;
 }
 
-std::vector<double> Lily::transform_matrix_to_translation(const Eigen::Matrix4d& T) {
+std::vector<double> Lily::transform_matrix_to_translation(
+    const Eigen::Matrix4d& T) {
   Eigen::Vector3d translation = T.block<3, 1>(0, 3);
-  std::vector<double> translation_vec(translation.data(), translation.data() + translation.size());
+  std::vector<double> translation_vec(translation.data(),
+                                      translation.data() + translation.size());
   return translation_vec;
 }
 
-std::vector<double> Lily::quaternion_to_euler_angles(const std::vector<double>& q) {
+std::vector<double> Lily::quaternion_to_euler_angles(
+    const std::vector<double>& q) {
   Eigen::Quaterniond quat(q[0], q[1], q[2], q[3]);
   quat.normalize();  // 正规化四元数以确保其表示有效的旋转
   Eigen::Vector3d euler_angles = quat.toRotationMatrix().eulerAngles(0, 1, 2);
-  std::vector<double> euler_angles_vec(euler_angles.data(),
-                                       euler_angles.data() + euler_angles.size());
+  std::vector<double> euler_angles_vec(
+      euler_angles.data(), euler_angles.data() + euler_angles.size());
   return euler_angles_vec;
 }
 
-Eigen::Matrix4d Lily::calculate_tf_matrix_from_translation_and_rotation(
-    const std::vector<double>& translation, const std::vector<double>& rotation) {
-  Eigen::Matrix4d tf_matrix = Eigen::Matrix4d::Identity();
+std::vector<double> Lily::euler_angles_to_quaternion(
+    const std::vector<double>& euler_angles) {
+  Eigen::Quaterniond quat =
+      Eigen::AngleAxisd(euler_angles[0], Eigen::Vector3d::UnitX()) *
+      Eigen::AngleAxisd(euler_angles[1], Eigen::Vector3d::UnitY()) *
+      Eigen::AngleAxisd(euler_angles[2], Eigen::Vector3d::UnitZ());
+  quat.normalize();
 
-  // calculate tf_matrix_map_ from translation and rotation(quat)
-  // - translation is a vector of [x, y, z]
-  // - rotation is a vector of [w, x, y, z]
-  // - tf_matrix is a 4x4 matrix
-
-  Eigen::Translation3d trans(translation[0], translation[1], translation[2]);
-  Eigen::Quaterniond quat(rotation[0], rotation[1], rotation[2], rotation[3]);
-  quat.normalize();  // 正规化四元数以确保其表示有效的旋转
-
-  Eigen::Affine3d transform =
-      Eigen::Translation3d(translation[0], translation[1], translation[2]) * quat;
-  tf_matrix = transform.matrix();
-
-  return tf_matrix;
+  Eigen::Vector4d quaternion =
+      Eigen::Vector4d(quat.w(), quat.x(), quat.y(), quat.z());
+  std::vector<double> quaternion_vec(quaternion.data(),
+                                     quaternion.data() + quaternion.size());
+  return quaternion_vec;
 }
 
-Eigen::Matrix4d Lily::calculate_tf_matrix_by_points(const std::string topic,
-                                                    const std::vector<double>& rotation) {
+Eigen::Matrix4d Lily::calculate_tf_matrix_by_points(
+    const std::string topic, const std::vector<double>& rotation) {
   Eigen::Matrix4d tf_matrix = Eigen::Matrix4d::Identity();
 
   // subscribe /clicked_point topic
   ros::Subscriber sub = nh_.subscribe<geometry_msgs::PointStamped>(
-      "/clicked_point", 1, boost::bind(&Lily::clicked_point_callback, this, _1, topic));
+      "/clicked_point", 1,
+      boost::bind(&Lily::clicked_point_callback, this, _1, topic));
 
   // publish transformed cloud and selected points from cloud
-  ros::Publisher pub = nh_.advertise<sensor_msgs::PointCloud2>(topic + "/calibrated", 1);
+  ros::Publisher pub =
+      nh_.advertise<sensor_msgs::PointCloud2>(topic + "/calibrated", 1);
 
-  pcl::PointCloud<pcl::PointXYZI>::Ptr transformed_cloud(new pcl::PointCloud<pcl::PointXYZI>);
-  pcl::transformPointCloud(*(cloud_map_[topic]), *transformed_cloud, tf_matrix);
+  pcl::PointCloud<pcl::PointXYZI>::Ptr transformed_cloud(
+      new pcl::PointCloud<pcl::PointXYZI>);
+  pcl::transformPointCloud(*(cloud_map_[topic]), *transformed_cloud,
+                           tf_matrix);
   sensor_msgs::PointCloud2::Ptr pc_msg(new sensor_msgs::PointCloud2);
   pcl::toROSMsg(*transformed_cloud, *pc_msg);
 
