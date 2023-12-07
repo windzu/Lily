@@ -2,7 +2,7 @@
  * @Author: windzu windzu1@gmail.com
  * @Date: 2023-12-06 23:12:01
  * @LastEditors: wind windzu1@gmail.com
- * @LastEditTime: 2023-12-07 10:11:24
+ * @LastEditTime: 2023-12-07 11:07:18
  * @Description:
  * Copyright (c) 2023 by windzu, All Rights Reserved.
  */
@@ -86,7 +86,18 @@ bool AutoLily::init() {
     // 3. wait until enough points are selected
     // 4. calculate tf_matrix from points (estimate plane)
     points_map_[topic] = std::vector<pcl::PointXYZI>();
-    if (iter->second["use_points"]) {
+    bool use_points = iter->second["use_points"].as<bool>();
+    if (use_points) {
+      // echo clicked_point topic to get points
+      std::cout << "-------------------------" << std::endl;
+      std::cout << topic
+                << " use points to estimate plane,will need you to choose "
+                   "points from rviz by clicking"
+                << std::endl;
+      std::cout << "1. open rviz" << std::endl;
+      std::cout << "2. subscribe topic : " << topic + "/calibrated"
+                << std::endl;
+      std::cout << "3. click points in rviz" << std::endl;
       ros::Subscriber sub = nh_.subscribe<geometry_msgs::PointStamped>(
           "/clicked_point", 1,
           boost::bind(&AutoLily::clicked_point_callback, this, _1, topic));
@@ -100,10 +111,7 @@ bool AutoLily::init() {
                                tf_matrix);
       sensor_msgs::PointCloud2::Ptr pc_msg(new sensor_msgs::PointCloud2);
       pcl::toROSMsg(*transformed_cloud, *pc_msg);
-
       pc_msg->header.frame_id = "base_link";
-
-      // publish
       pub.publish(pc_msg);
 
       // ros spin

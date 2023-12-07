@@ -2,7 +2,7 @@
  * @Author: windzu windzu1@gmail.com
  * @Date: 2023-06-16 16:13:00
  * @LastEditors: wind windzu1@gmail.com
- * @LastEditTime: 2023-12-07 10:14:34
+ * @LastEditTime: 2023-12-07 10:44:17
  * @Description:
  * Copyright (c) 2023 by windzu, All Rights Reserved.
  */
@@ -31,9 +31,6 @@
 
 #include "lily/ground_segmentation.h"
 #include "lily/utils.h"
-// #include "lidar_auto_calibration/calibration.hpp"
-// #include "lidar_auto_calibration/ground_segmentation.hpp"
-// #include "lidar_auto_calibration/registration_icp.hpp"
 
 class AutoCalibrator {
  public:

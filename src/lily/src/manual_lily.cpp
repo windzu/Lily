@@ -1,8 +1,8 @@
 /*
  * @Author: wind windzu1@gmail.com
  * @Date: 2023-12-06 18:36:33
- * @LastEditors: windzu windzu1@gmail.com
- * @LastEditTime: 2023-12-07 01:22:06
+ * @LastEditors: wind windzu1@gmail.com
+ * @LastEditTime: 2023-12-07 11:42:25
  * @Description:
  * Copyright (c) 2023 by windzu, All Rights Reserved.
  */
@@ -39,10 +39,7 @@ bool ManualLily::init() {
     if (rotation[0] != 1 || rotation[1] != 0 || rotation[2] != 0 ||
         rotation[3] != 0) {
       rotation_euler = quaternion_to_euler_angles(rotation);
-    }
-    // check if update rotation from rotation_euler
-    if (rotation[0] == 1 && rotation[1] == 0 && rotation[2] == 0 &&
-        rotation[3] == 0) {
+    } else {
       if (rotation_euler[0] != 0 || rotation_euler[1] != 0 ||
           rotation_euler[2] != 0) {
         rotation = euler_angles_to_quaternion(rotation_euler);

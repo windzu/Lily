@@ -2,7 +2,7 @@
  * @Author: windzu windzu1@gmail.com
  * @Date: 2023-06-16 16:13:34
  * @LastEditors: wind windzu1@gmail.com
- * @LastEditTime: 2023-12-07 10:13:19
+ * @LastEditTime: 2023-12-07 10:36:18
  * @Description:
  * Copyright (c) 2023 by windzu, All Rights Reserved.
  */
@@ -55,7 +55,7 @@ std::unordered_map<std::string, Eigen::Matrix4d> AutoCalibrator::process(
   }
 
   // 2. ground_calibration
-  Eigen::Vector3f z_normal(0, 0, 1);
+  Eigen::Vector3d z_normal(0, 0, 1);
   for (auto iter = cloud_map_.begin(); iter != cloud_map_.end(); iter++) {
     auto& topic = iter->first;
     auto& cloud = iter->second;
@@ -70,7 +70,7 @@ std::unordered_map<std::string, Eigen::Matrix4d> AutoCalibrator::process(
     // 1. first time seg ground plane and get normal vector
     pcl::ModelCoefficients::Ptr first_coefficients;
     first_coefficients = ground_plane_extraction(cloud, sensor_height);
-    Eigen::Vector3f normal;
+    Eigen::Vector3d normal;
     normal[0] = first_coefficients->values[0];
     normal[1] = first_coefficients->values[1];
     normal[2] = first_coefficients->values[2];
