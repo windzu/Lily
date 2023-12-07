@@ -1,8 +1,8 @@
 /*
  * @Author: windzu windzu1@gmail.com
  * @Date: 2023-12-06 23:12:01
- * @LastEditors: windzu windzu1@gmail.com
- * @LastEditTime: 2023-12-07 01:23:44
+ * @LastEditors: wind windzu1@gmail.com
+ * @LastEditTime: 2023-12-07 10:11:24
  * @Description:
  * Copyright (c) 2023 by windzu, All Rights Reserved.
  */
@@ -128,7 +128,7 @@ bool AutoLily::init() {
       estimate_ground_normal_vector[1] = coefficients->values[1];
       estimate_ground_normal_vector[2] = coefficients->values[2];
       Eigen::Matrix4d rotation_matrix =
-          calculate_rotation_matrix_from_two_vectors(
+          calculate_rotation_matrix4d_from_two_vectors(
               estimate_ground_normal_vector, real_ground_normal_vector);
       // update tf_matrix
       tf_matrix_map_[topic] = rotation_matrix * tf_matrix;
@@ -146,7 +146,7 @@ void AutoLily::run() {
   std::cout << "Collection" << std::endl;
 
   ros::Rate rate(10);
-  while (ros::ok() && !cloud_map_full_check()) {
+  while (ros::ok() && !cloud_map_full_check(cloud_map_)) {
     ros::spinOnce();
     rate.sleep();
   }
@@ -155,23 +155,13 @@ void AutoLily::run() {
   std::cout << "Calibration" << std::endl;
 
   // calibration
-  calibrator_.reset(new Calibrator(num_iter_, num_lpr_, th_seeds_, th_dist_));
-  tf_matrix_map_ = calibrator_->process(cloud_map_, main_topic_, points_map_,
-                                        tf_matrix_map_);
-
-  // debug
-  std::cout << "after calibration:" << std::endl;
-  std::cout << "-------------------------" << std::endl;
-  for (auto iter = tf_matrix_map_.begin(); iter != tf_matrix_map_.end();
-       iter++) {
-    std::cout << iter->first << std::endl;
-    std::cout << iter->second << std::endl;
-  }
-  std::cout << "-------------------------" << std::endl;
+  auto_calibrator_.reset(
+      new AutoCalibrator(num_iter_, num_lpr_, th_seeds_, th_dist_));
+  tf_matrix_map_ = auto_calibrator_->process(
+      cloud_map_, main_topic_, need_calibration_map_, tf_matrix_map_);
 
   std::cout << "-------------------------" << std::endl;
-  std::cout << "Saving" << std::endl;
-  // save
+  std::cout << "Saving Result" << std::endl;
   save_config();
   ros::shutdown();
   return;

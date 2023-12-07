@@ -1,8 +1,8 @@
 /*
  * @Author: windzu windzu1@gmail.com
  * @Date: 2023-07-05 11:38:22
- * @LastEditors: windzu windzu1@gmail.com
- * @LastEditTime: 2023-12-07 01:19:33
+ * @LastEditors: wind windzu1@gmail.com
+ * @LastEditTime: 2023-12-07 10:26:09
  * @Description:
  * Copyright (c) 2023 by windzu, All Rights Reserved.
  */
@@ -19,7 +19,6 @@
 #include <tf/tf.h>
 #include <yaml-cpp/yaml.h>
 
-#include <boost/thread.hpp>
 #include <chrono>
 #include <iomanip>
 #include <iostream>
@@ -28,41 +27,21 @@
 #include <unordered_map>
 #include <vector>
 
-#include "lily/auto_lily.h"
-#include "lily/calibrator.h"
-#include "lily/manual_lily.h"
+#include "boost/thread.hpp"
 #include "lily/utils.h"
 
 class ManualLily {
  public:
   ManualLily(ros::NodeHandle nh, ros::NodeHandle pnh);
-
- private:
   bool init();
   void run();
+
   void callback(const sensor_msgs::PointCloud2::ConstPtr& msg,
                 const std::string& topic_name);
   void trans_and_pub();
-  bool cloud_map_full_check();
   void dynamic_config_callback(dynamic_tf_config::dynamicConfig config);
   void flash_status_bar();
   void save_config();
-
-  //   // utils
-  //   Eigen::Vector3d rotation_matrix_to_euler_angles(const Eigen::Matrix3d&
-  //   R); std::vector<double> transform_matrix_to_euler_angles(
-  //       const Eigen::Matrix4d& T);
-  //   std::vector<double> transform_matrix_to_quaternion(const
-  //   Eigen::Matrix4d& T); std::vector<double>
-  //   transform_matrix_to_translation(
-  //       const Eigen::Matrix4d& T);
-  //   std::vector<double> quaternion_to_euler_angles(const
-  //   std::vector<double>& q); Eigen::Matrix4d
-  //   calculate_tf_matrix_from_translation_and_rotation(
-  //       const std::vector<double>& translation,
-  //       const std::vector<double>& rotation);
-  //   Eigen::Matrix4d calculate_tf_matrix_by_points(
-  //       const std::string topic, const std::vector<double>& rotation);
 
  private:
   // ros

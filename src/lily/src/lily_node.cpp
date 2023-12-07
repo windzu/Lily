@@ -11,7 +11,7 @@
 
 #include "lily/lily.h"
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
   ROS_WARN_STREAM("~~ ===========================================~~");
   ROS_WARN_STREAM("~~ =================   Lily  ================= ~~");
   ROS_WARN_STREAM("~~ =========================================== ~~");

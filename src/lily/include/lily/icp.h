@@ -24,8 +24,10 @@ class ICP {
                       const pcl::PointCloud<pcl::PointXYZI>::Ptr& ngcloud,
                       const pcl::PointCloud<pcl::PointXYZI>::Ptr& cloud);
 
-  bool RegistrationByICP(const Eigen::Matrix4d& init_guess, Eigen::Matrix4d& transform);
-  bool RegistrationByICP2(const Eigen::Matrix4d& init_guess, Eigen::Matrix4d& refined_extrinsic);
+  bool RegistrationByICP(const Eigen::Matrix4d& init_guess,
+                         Eigen::Matrix4d& transform);
+  bool RegistrationByICP2(const Eigen::Matrix4d& init_guess,
+                          Eigen::Matrix4d& refined_extrinsic);
   Eigen::Matrix4d GetFinalTransformation();
   double CalculateICPError(const pcl::KdTreeFLANN<pcl::PointXYZI>& kdtree,
                            const Eigen::Matrix4d& init_guess, float cur_yaw);

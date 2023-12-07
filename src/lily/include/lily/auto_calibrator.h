@@ -2,7 +2,7 @@
  * @Author: windzu windzu1@gmail.com
  * @Date: 2023-06-16 16:13:00
  * @LastEditors: wind windzu1@gmail.com
- * @LastEditTime: 2023-10-19 16:05:54
+ * @LastEditTime: 2023-12-07 10:14:34
  * @Description:
  * Copyright (c) 2023 by windzu, All Rights Reserved.
  */
@@ -30,13 +30,14 @@
 #include <vector>
 
 #include "lily/ground_segmentation.h"
+#include "lily/utils.h"
 // #include "lidar_auto_calibration/calibration.hpp"
 // #include "lidar_auto_calibration/ground_segmentation.hpp"
 // #include "lidar_auto_calibration/registration_icp.hpp"
 
-class Calibrator {
+class AutoCalibrator {
  public:
-  Calibrator(int num_iter, int num_lpr, double th_seeds, double th_dist)
+  AutoCalibrator(int num_iter, int num_lpr, double th_seeds, double th_dist)
       : num_iter_(num_iter),
         num_lpr_(num_lpr),
         th_seeds_(th_seeds),
@@ -47,29 +48,19 @@ class Calibrator {
       const std::unordered_map<
           std::string, pcl::PointCloud<pcl::PointXYZI>::Ptr>& cloud_map,
       const std::string& main_topic,
-      const std::unordered_map<std::string, std::vector<pcl::PointXYZ>>&
-          points_map,
+      const std::unordered_map<std::string, bool>& need_calibration_map,
       const std::unordered_map<std::string, Eigen::Matrix4d>& tf_matrix_map);
 
-  bool ground_calibration();
   bool icpn();
   void stiching();
 
   std::unordered_map<std::string, Eigen::Matrix4d> calib_map_;
 
  private:
-  Eigen::Vector3d rotation_matrix_to_euler_angles(const Eigen::Matrix3d& R);
-  Eigen::Matrix4d create_rotate_matrix(Eigen::Vector3f before,
-                                       Eigen::Vector3f after);
-
   // 地面提取
   pcl::ModelCoefficients::Ptr ground_plane_extraction(
       const pcl::PointCloud<pcl::PointXYZI>::Ptr& in_cloud,
       double sensor_height);
-
-  // 使用RANSAC算法对少量的地面点拟合平面
-  pcl::ModelCoefficients::Ptr compute_plane_normal(
-      pcl::PointCloud<pcl::PointXYZI>::Ptr cloud);
 
  private:
   // const double sensor_height = 1.5;
@@ -82,10 +73,8 @@ class Calibrator {
   std::unordered_map<std::string, pcl::PointCloud<pcl::PointXYZI>::Ptr>
       cloud_map_;
   std::unordered_map<std::string, Eigen::Matrix4d> tf_matrix_map_;
-  std::unordered_map<std::string, std::vector<pcl::PointXYZ>> points_map_;
+  std::unordered_map<std::string, bool> need_calibration_map_;
 
   YAML::Node config_;
   std::map<std::string, Eigen::Matrix4d> extrinsic_map_;
-
-  std::unique_ptr<Calibrator> calibrator_;
 };

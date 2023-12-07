@@ -35,7 +35,8 @@ Eigen::Vector3f ICP::rotationMatrixToEulerAngles(Eigen::Matrix3d& R) {
 }
 ICP::ICP() {
   all_cloud_.reset(new pcl::PointCloud<pcl::PointXYZI>());
-  all_octree_.reset(new pcl::octree::OctreePointCloudSearch<pcl::PointXYZI>(0.05));
+  all_octree_.reset(
+      new pcl::octree::OctreePointCloudSearch<pcl::PointXYZI>(0.05));
   all_octree_->setInputCloud(all_cloud_);
 }
 
@@ -64,17 +65,18 @@ Eigen::Matrix4d ICP::GetFinalTransformation() {
 }
 
 Eigen::Matrix4d GetDeltaT(const float yaw) {
-  Eigen::Matrix3d deltaR =
-      Eigen::Matrix3d(Eigen::AngleAxisd(yaw * M_PI / 180.0, Eigen::Vector3d::UnitZ()) *
-                      Eigen::AngleAxisd(0, Eigen::Vector3d::UnitY()) *
-                      Eigen::AngleAxisd(0, Eigen::Vector3d::UnitX()));
+  Eigen::Matrix3d deltaR = Eigen::Matrix3d(
+      Eigen::AngleAxisd(yaw * M_PI / 180.0, Eigen::Vector3d::UnitZ()) *
+      Eigen::AngleAxisd(0, Eigen::Vector3d::UnitY()) *
+      Eigen::AngleAxisd(0, Eigen::Vector3d::UnitX()));
 
   Eigen::Matrix4d deltaT = Eigen::Matrix4d::Identity();
   deltaT.block<3, 3>(0, 0) = deltaR;
   return deltaT;
 }
 
-bool ICP::RegistrationByICP(const Eigen::Matrix4d& init_guess, Eigen::Matrix4d& transform) {
+bool ICP::RegistrationByICP(const Eigen::Matrix4d& init_guess,
+                            Eigen::Matrix4d& transform) {
   pcl::KdTreeFLANN<pcl::PointXYZI> kdtree;
   kdtree.setInputCloud(tgt_ngcloud_);
   double cur_yaw = 0;
@@ -105,7 +107,8 @@ bool ICP::RegistrationByICP(const Eigen::Matrix4d& init_guess, Eigen::Matrix4d& 
 }
 
 double ICP::CalculateICPError(const pcl::KdTreeFLANN<pcl::PointXYZI>& kdtree,
-                              const Eigen::Matrix4d& init_guess, float cur_yaw) {
+                              const Eigen::Matrix4d& init_guess,
+                              float cur_yaw) {
   Eigen::Matrix4d T = GetDeltaT(cur_yaw) * init_guess;
   pcl::PointCloud<pcl::PointXYZI> trans_cloud;
   // T(0, 2) = 0;
@@ -118,7 +121,8 @@ double ICP::CalculateICPError(const pcl::KdTreeFLANN<pcl::PointXYZI>& kdtree,
   Eigen::Vector3f euler = rotationMatrixToEulerAngles(rot);
   // 计算旋转矩阵的Z分量
   Eigen::Matrix3d R;
-  R << cos(euler[2]), -sin(euler[2]), 0.0, sin(euler[2]), cos(euler[2]), 0.0, 0.0, 0.0, 1.0;
+  R << cos(euler[2]), -sin(euler[2]), 0.0, sin(euler[2]), cos(euler[2]), 0.0,
+      0.0, 0.0, 1.0;
   T.block<3, 3>(0, 0) = R;  //去除刚性变换中与Z轴方向有关的旋转和平移因素
   pcl::transformPointCloud(*src_ngcloud_, trans_cloud, T);
   double dist_sum = 0;
@@ -152,7 +156,9 @@ bool ICP::RegistrationByICP2(const Eigen::Matrix4d& init_guess,
       new pcl::PointCloud<pcl::PointXYZINormal>);
   computeNormals(tgt_cloud_, cloud_tgt_normal);
 
-  pcl::IterativeClosestPointWithNormals<pcl::PointXYZINormal, pcl::PointXYZINormal> icp;
+  pcl::IterativeClosestPointWithNormals<pcl::PointXYZINormal,
+                                        pcl::PointXYZINormal>
+      icp;
   icp.setInputSource(cloud_before_normal);
   icp.setInputTarget(cloud_tgt_normal);
   icp.setMaximumIterations(8);
@@ -169,8 +175,10 @@ bool ICP::RegistrationByICP2(const Eigen::Matrix4d& init_guess,
   Eigen::Vector3f euler = rotationMatrixToEulerAngles(rot);
   // 计算旋转矩阵的Z分量
   Eigen::Matrix3d R;
-  R << cos(euler[2]), -sin(euler[2]), 0.0, sin(euler[2]), cos(euler[2]), 0.0, 0.0, 0.0, 1.0;
-  refined_extrinsic.block<3, 3>(0, 0) = R;  //去除刚性变换中与Z轴方向有关的旋转和平移因素
+  R << cos(euler[2]), -sin(euler[2]), 0.0, sin(euler[2]), cos(euler[2]), 0.0,
+      0.0, 0.0, 1.0;
+  refined_extrinsic.block<3, 3>(0, 0) =
+      R;  //去除刚性变换中与Z轴方向有关的旋转和平移因素
   // refined_extrinsic(0, 2) = 0;
   // refined_extrinsic(1, 2) = 0;
   // refined_extrinsic(2, 0) = 0;
@@ -183,7 +191,8 @@ bool ICP::RegistrationByICP2(const Eigen::Matrix4d& init_guess,
 void ICP::computeNormals(const pcl::PointCloud<pcl::PointXYZI>::Ptr in_pts,
                          pcl::PointCloud<pcl::PointXYZINormal>::Ptr out_pts) {
   pcl::NormalEstimation<pcl::PointXYZI, pcl::PointXYZINormal> norm_est;
-  pcl::search::KdTree<pcl::PointXYZI>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZI>());
+  pcl::search::KdTree<pcl::PointXYZI>::Ptr tree(
+      new pcl::search::KdTree<pcl::PointXYZI>());
   norm_est.setSearchMethod(tree);
   norm_est.setKSearch(20);
   // norm_est.setRadiusSearch(5);

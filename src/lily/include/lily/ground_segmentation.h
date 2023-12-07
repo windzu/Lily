@@ -2,7 +2,7 @@
  * @Author: windzu windzu1@gmail.com
  * @Date: 2023-06-16 16:13:00
  * @LastEditors: wind windzu1@gmail.com
- * @LastEditTime: 2023-10-19 13:50:04
+ * @LastEditTime: 2023-12-07 10:15:26
  * @Description:
  * Copyright (c) 2023 by windzu, All Rights Reserved.
  */
@@ -13,15 +13,18 @@
 
 #include <Eigen/Dense>
 #include <iostream>
+#include <utility>
 
 class GroundPlaneFit {
  public:
-  GroundPlaneFit(double sensor_height, int num_iter, int num_lpr, double th_seeds, double th_dist);
+  GroundPlaneFit(double sensor_height, int num_iter, int num_lpr,
+                 double th_seeds, double th_dist);
 
   ~GroundPlaneFit() = default;
 
-  std::pair<pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::Ptr> process(
-      const pcl::PointCloud<pcl::PointXYZ>::Ptr& input);
+  std::pair<pcl::PointCloud<pcl::PointXYZ>::Ptr,
+            pcl::PointCloud<pcl::PointXYZ>::Ptr>
+  process(const pcl::PointCloud<pcl::PointXYZ>::Ptr& input);
 
   Eigen::MatrixXf normal_;
   Eigen::Vector3f seeds_mean;
