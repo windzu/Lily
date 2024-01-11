@@ -17,11 +17,9 @@ Lily::Lily(ros::NodeHandle nh, ros::NodeHandle pnh) {
   pnh_.param<bool>("manual_mode", manual_mode, "");
   if (manual_mode) {
     manual_lily_.reset(new ManualLily(nh_, pnh_));
-    manual_lily_->init();
     manual_lily_->run();
   } else {
     auto_lily_.reset(new AutoLily(nh_, pnh_));
-    auto_lily_->init();
     auto_lily_->run();
   }
 

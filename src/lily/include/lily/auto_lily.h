@@ -50,7 +50,7 @@ class AutoLily {
   std::string config_path_;
   std::string main_topic_ = "";
 
-  int min_points_num_ = 4;  // estimate plane need at least 4 points
+  int min_points_num_ = 6;  // estimate plane need at least 4 points
 
   YAML::Node config_;
 

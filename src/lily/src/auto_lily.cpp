@@ -35,18 +35,10 @@ bool AutoLily::init() {
     std::vector<double> rotation_euler =
         iter->second["transform"]["rotation_euler"].as<std::vector<double>>();
 
-    // check if update rotation_euler from rotation
-    if (rotation[0] != 1 || rotation[1] != 0 || rotation[2] != 0 ||
-        rotation[3] != 0) {
+    if (rotation[0] > 0 && rotation[0] < 1) {
       rotation_euler = quaternion_to_euler_angles(rotation);
-    }
-    // check if update rotation from rotation_euler
-    if (rotation[0] == 1 && rotation[1] == 0 && rotation[2] == 0 &&
-        rotation[3] == 0) {
-      if (rotation_euler[0] != 0 || rotation_euler[1] != 0 ||
-          rotation_euler[2] != 0) {
-        rotation = euler_angles_to_quaternion(rotation_euler);
-      }
+    } else {
+      rotation = euler_angles_to_quaternion(rotation_euler);
     }
 
     Eigen::Matrix4d tf_matrix =
@@ -124,25 +116,42 @@ bool AutoLily::init() {
 
       // when enough points are selected
       // calculate tf_matrix from points
+      std::cout
+          << "4. enough points are selected,will use points to estimate plane"
+          << std::endl;
       pcl::PointCloud<pcl::PointXYZI>::Ptr cloud(
           new pcl::PointCloud<pcl::PointXYZI>);
       for (auto point : points_map_[topic]) {
         cloud->push_back(point);
       }
-      pcl::ModelCoefficients::Ptr coefficients = compute_plane(cloud);
-      Eigen::Vector3d real_ground_normal_vector(0, 0, 1);
-      Eigen::Vector3d estimate_ground_normal_vector;
-      estimate_ground_normal_vector[0] = coefficients->values[0];
-      estimate_ground_normal_vector[1] = coefficients->values[1];
-      estimate_ground_normal_vector[2] = coefficients->values[2];
-      Eigen::Matrix4d rotation_matrix =
-          calculate_rotation_matrix4d_from_two_vectors(
-              estimate_ground_normal_vector, real_ground_normal_vector);
+
+      // 1. first time seg ground plane and get normal vector
+      Eigen::Vector3d z_normal(0, 0, 1);
+      pcl::ModelCoefficients::Ptr first_coefficients;
+      first_coefficients = compute_plane(cloud);
+      Eigen::Vector3d normal;
+      normal[0] = first_coefficients->values[0];
+      normal[1] = first_coefficients->values[1];
+      normal[2] = first_coefficients->values[2];
+
+      Eigen::Matrix4d first_ret =
+          calculate_rotation_matrix4d_from_two_vectors(normal, z_normal);
+      pcl::transformPointCloud(*cloud, *cloud, first_ret);
+
+      // 2. second time seg ground plane and get ground height
+      Eigen::Matrix4d second_ret = Eigen::Matrix4d::Identity();
+      pcl::ModelCoefficients::Ptr sceond_coefficients;
+      sceond_coefficients = compute_plane(cloud);
+      second_ret(2, 3) = sceond_coefficients->values[3];  // ground height
+      pcl::transformPointCloud(*cloud, *cloud, second_ret);
       // update tf_matrix
-      tf_matrix_map_[topic] = rotation_matrix * tf_matrix;
+      tf_matrix_map_[topic] = second_ret * first_ret * tf_matrix;
 
       // set need_calibration to false because we have calibrated
       need_calibration_map_[topic] = false;
+
+      std::cout << "5. estimate plane success" << std::endl;
+      std::cout << "-------------------------" << std::endl;
     }
   }
 

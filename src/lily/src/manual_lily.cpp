@@ -36,14 +36,20 @@ bool ManualLily::init() {
         iter->second["transform"]["rotation_euler"].as<std::vector<double>>();
 
     // check if update rotation_euler from rotation
-    if (rotation[0] != 1 || rotation[1] != 0 || rotation[2] != 0 ||
-        rotation[3] != 0) {
+    // if (rotation[0] != 1 || rotation[1] != 0 || rotation[2] != 0 ||
+    //     rotation[3] != 0) {
+    //   rotation_euler = quaternion_to_euler_angles(rotation);
+    // } else {
+    //   if (rotation_euler[0] != 0 || rotation_euler[1] != 0 ||
+    //       rotation_euler[2] != 0) {
+    //     rotation = euler_angles_to_quaternion(rotation_euler);
+    //   }
+    // }
+
+    if (rotation[0] > 0 && rotation[0] < 1) {
       rotation_euler = quaternion_to_euler_angles(rotation);
     } else {
-      if (rotation_euler[0] != 0 || rotation_euler[1] != 0 ||
-          rotation_euler[2] != 0) {
-        rotation = euler_angles_to_quaternion(rotation_euler);
-      }
+      rotation = euler_angles_to_quaternion(rotation_euler);
     }
 
     Eigen::Matrix4d tf_matrix =
