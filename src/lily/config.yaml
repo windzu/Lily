@@ -1,60 +1,60 @@
 /lidar_points/top:
   need_calibration: true
-  use_points: false
+  use_points: true
   is_main: true
   load_from_file: true
-  file_path: /home/wind/Downloads/capture/1000Q6/fac/lidar_points_top/0.pcd
+  file_path: /home/wind/Downloads/capture/0125/lidar_points_top/0.pcd
   transform:
     translation:
-      - 1.561
-      - -0.01
-      - 2.027
+      - 1.541
+      - -0.018
+      - 1.707
     rotation:
       - 1
+      - 0
+      - -0.006
       - -0.002
-      - 0.008999999999999999
-      - 0.003
     rotation_euler:
-      - -0.003
-      - 0.018
-      - 0.006
+      - 0
+      - -0.013
+      - -0.004
 /lidar_points/front:
   need_calibration: true
   use_points: false
   is_main: false
   load_from_file: true
-  file_path: /home/wind/Downloads/capture/1000Q6/fac/lidar_points_front/0.pcd
+  file_path: /home/wind/Downloads/capture/0125/lidar_points_front/0.pcd
   transform:
     translation:
-      - 1.95
-      - -0.6899999999999999
-      - 1.592
+      - 1.76
+      - -0.633
+      - 1.375
     rotation:
-      - 0.013
-      - 1
-      - 0.025
-      - -0.005
+      - 0
+      - 0
+      - 0
+      - 0
     rotation_euler:
-      - 3.116
-      - 0.011
-      - 0.05
+      - -3.131
+      - 0
+      - -0.771
 /lidar_points/back:
   need_calibration: true
   use_points: false
   is_main: false
   load_from_file: true
-  file_path: /home/wind/Downloads/capture/1000Q6/fac/lidar_points_back/0.pcd
+  file_path: /home/wind/Downloads/capture/0125/lidar_points_back/0.pcd
   transform:
     translation:
-      - -1.15
-      - 0.65
-      - 1.602
+      - -0.55
+      - 0.6
+      - 1.293
     rotation:
-      - 0.003
-      - 0.243
-      - 0.97
-      - -0.01
+      - 0
+      - 0
+      - 0
+      - 0
     rotation_euler:
-      - -3.124
-      - 0.011
-      - 2.65
+      - 3.11
+      - 0.013
+      - 2.351

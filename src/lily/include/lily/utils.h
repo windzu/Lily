@@ -21,6 +21,10 @@ Eigen::Matrix4d calculate_tf_matrix_from_translation_and_rotation(
     const std::vector<double>& translation,
     const std::vector<double>& rotation);
 
+bool parse_tf(std::vector<double>* rotation,
+              std::vector<double>* rotation_euler,
+              std::vector<double>* translation, Eigen::Matrix4d* tf_matrix);
+
 pcl::ModelCoefficients::Ptr compute_plane(
     pcl::PointCloud<pcl::PointXYZI>::Ptr cloud);
 
@@ -32,6 +36,10 @@ std::vector<double> quaternion_to_euler_angles(const std::vector<double>& q);
 Eigen::Matrix3d quaternion_to_rotation_matrix(const std::vector<double>& q);
 std::vector<double> euler_angles_to_quaternion(
     const std::vector<double>& euler_angles);
+std::vector<double> euler_angles_to_quaternion(
+    const std::vector<double>& translation,
+    const std::vector<double>& euler_angles);
+
 std::vector<double> rotation_matrix_to_euler_angles(const Eigen::Matrix3d& R);
 std::vector<double> rotation_matrix_to_quaternion(const Eigen::Matrix3d& R);
 std::vector<double> transform_matrix_to_euler_angles(const Eigen::Matrix4d& T);

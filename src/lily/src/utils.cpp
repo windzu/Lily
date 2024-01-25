@@ -30,6 +30,21 @@ Eigen::Matrix4d calculate_tf_matrix_from_translation_and_rotation(
   return tf_matrix;
 }
 
+bool parse_tf(std::vector<double>* rotation,
+              std::vector<double>* rotation_euler,
+              std::vector<double>* translation, Eigen::Matrix4d* tf_matrix) {
+  if ((*rotation)[0] > 0 && (*rotation)[0] < 1) {
+    *rotation_euler = quaternion_to_euler_angles((*rotation));
+  } else {
+    *rotation = euler_angles_to_quaternion(*translation, *rotation_euler);
+  }
+
+  *tf_matrix = calculate_tf_matrix_from_translation_and_rotation(*translation,
+                                                                 *rotation);
+
+  return true;
+}
+
 pcl::ModelCoefficients::Ptr compute_plane(
     pcl::PointCloud<pcl::PointXYZI>::Ptr cloud) {
   pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients());
@@ -121,6 +136,40 @@ std::vector<double> euler_angles_to_quaternion(
       Eigen::AngleAxisd(euler_angles[2], Eigen::Vector3d::UnitZ());
   quat.normalize();
 
+  Eigen::Vector4d quaternion =
+      Eigen::Vector4d(quat.w(), quat.x(), quat.y(), quat.z());
+  std::vector<double> quaternion_vec(quaternion.data(),
+                                     quaternion.data() + quaternion.size());
+  return quaternion_vec;
+}
+
+std::vector<double> euler_angles_to_quaternion(
+    const std::vector<double>& translation,
+    const std::vector<double>& euler_angles) {
+  //   Eigen::Quaterniond quat =
+  //       Eigen::AngleAxisd(euler_angles[0], Eigen::Vector3d::UnitX()) *
+  //       Eigen::AngleAxisd(euler_angles[1], Eigen::Vector3d::UnitY()) *
+  //       Eigen::AngleAxisd(euler_angles[2], Eigen::Vector3d::UnitZ());
+  //   quat.normalize();
+  //
+  //   Eigen::Vector4d quaternion =
+  //       Eigen::Vector4d(quat.w(), quat.x(), quat.y(), quat.z());
+  //   std::vector<double> quaternion_vec(quaternion.data(),
+  //                                      quaternion.data() +
+  //                                      quaternion.size());
+  //   return quaternion_vec;
+
+  Eigen::Matrix4d tf_matrix = Eigen::Matrix4d::Identity();
+  Eigen::Translation3d tl(translation[0], translation[1], translation[2]);
+  Eigen::AngleAxisd rot_x(euler_angles[0], Eigen::Vector3d::UnitX());
+  Eigen::AngleAxisd rot_y(euler_angles[1], Eigen::Vector3d::UnitY());
+  Eigen::AngleAxisd rot_z(euler_angles[2], Eigen::Vector3d::UnitZ());
+  tf_matrix = (tl * rot_z * rot_y * rot_x).matrix();
+
+  // calculate quaternion from tf_matrix
+  Eigen::Matrix3d R = tf_matrix.block<3, 3>(0, 0);
+  Eigen::Quaterniond quat(R);
+  quat.normalize();  // 正规化四元数以确保其表示有效的旋转
   Eigen::Vector4d quaternion =
       Eigen::Vector4d(quat.w(), quat.x(), quat.y(), quat.z());
   std::vector<double> quaternion_vec(quaternion.data(),

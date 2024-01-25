@@ -35,15 +35,9 @@ bool AutoLily::init() {
     std::vector<double> rotation_euler =
         iter->second["transform"]["rotation_euler"].as<std::vector<double>>();
 
-    if (rotation[0] > 0 && rotation[0] < 1) {
-      rotation_euler = quaternion_to_euler_angles(rotation);
-    } else {
-      rotation = euler_angles_to_quaternion(rotation_euler);
-    }
+    Eigen::Matrix4d tf_matrix = Eigen::Matrix4d::Identity();
+    parse_tf(&rotation, &rotation_euler, &translation, &tf_matrix);
 
-    Eigen::Matrix4d tf_matrix =
-        calculate_tf_matrix_from_translation_and_rotation(translation,
-                                                          rotation);
     tf_matrix_map_[topic] = tf_matrix;
 
     // find main topic

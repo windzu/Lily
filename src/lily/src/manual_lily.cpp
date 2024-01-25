@@ -35,26 +35,8 @@ bool ManualLily::init() {
     std::vector<double> rotation_euler =
         iter->second["transform"]["rotation_euler"].as<std::vector<double>>();
 
-    // check if update rotation_euler from rotation
-    // if (rotation[0] != 1 || rotation[1] != 0 || rotation[2] != 0 ||
-    //     rotation[3] != 0) {
-    //   rotation_euler = quaternion_to_euler_angles(rotation);
-    // } else {
-    //   if (rotation_euler[0] != 0 || rotation_euler[1] != 0 ||
-    //       rotation_euler[2] != 0) {
-    //     rotation = euler_angles_to_quaternion(rotation_euler);
-    //   }
-    // }
-
-    if (rotation[0] > 0 && rotation[0] < 1) {
-      rotation_euler = quaternion_to_euler_angles(rotation);
-    } else {
-      rotation = euler_angles_to_quaternion(rotation_euler);
-    }
-
-    Eigen::Matrix4d tf_matrix =
-        calculate_tf_matrix_from_translation_and_rotation(translation,
-                                                          rotation);
+    Eigen::Matrix4d tf_matrix = Eigen::Matrix4d::Identity();
+    parse_tf(&rotation, &rotation_euler, &translation, &tf_matrix);
 
     // set dynamic_config_map_
     dynamic_tf_config::dynamicConfig config;
