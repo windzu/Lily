@@ -3,58 +3,78 @@
   use_points: true
   is_main: true
   load_from_file: true
-  file_path: /home/wind/Downloads/capture/0125/lidar_points_top/0.pcd
+  file_path: /home/wind/Downloads/capture/build3/right/lidar_points_top/0.pcd
   transform:
     translation:
-      - 1.541
-      - -0.018
-      - 1.707
+      - 0.285
+      - -0.01
+      - 1.431
     rotation:
       - 1
+      - 0.001
       - 0
-      - -0.006
-      - -0.002
+      - -0.003
     rotation_euler:
-      - 0
-      - -0.013
-      - -0.004
+      - 0.002
+      - 0.001
+      - -0.005
 /lidar_points/front:
   need_calibration: true
   use_points: false
   is_main: false
   load_from_file: true
-  file_path: /home/wind/Downloads/capture/0125/lidar_points_front/0.pcd
+  file_path: /home/wind/Downloads/capture/build3/right/lidar_points_front/0.pcd
   transform:
     translation:
-      - 1.76
-      - -0.633
-      - 1.375
+      - 0.3
+      - -0.05
+      - 1.476
     rotation:
-      - 0
-      - 0
-      - 0
-      - 0
+      - 0.997
+      - -0.015
+      - 0.06900000000000001
+      - -0.021
     rotation_euler:
-      - -3.131
-      - 0
-      - -0.771
-/lidar_points/back:
+      - -0.033
+      - 0.137
+      - -0.044
+/lidar_points/left:
   need_calibration: true
   use_points: false
   is_main: false
   load_from_file: true
-  file_path: /home/wind/Downloads/capture/0125/lidar_points_back/0.pcd
+  file_path: /home/wind/Downloads/capture/build3/right/lidar_points_left/0.pcd
   transform:
     translation:
-      - -0.55
-      - 0.6
-      - 1.293
+      - 0.33
+      - -0.01
+      - 1.419
     rotation:
-      - 0
-      - 0
-      - 0
-      - 0
+      - 0.999
+      - -0.03
+      - -0.01
+      - -0.04
     rotation_euler:
-      - 3.11
-      - 0.013
-      - 2.351
+      - -0.059
+      - -0.022
+      - -0.079
+/lidar_points/right:
+  need_calibration: true
+  use_points: false
+  is_main: false
+  load_from_file: true
+  file_path: /home/wind/Downloads/capture/build3/right/lidar_points_right/0.pcd
+  transform:
+    translation:
+      - 0.19
+      - -0.03
+      - 1.447
+    rotation:
+      - 0.998
+      - 0.041
+      - 0.008
+      - -0.051
+    rotation_euler:
+      - 0.081
+      - 0.02
+      - -0.102

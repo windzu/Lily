@@ -1,0 +1,60 @@
+/lidar_points/top:
+  need_calibration: true
+  use_points: true
+  is_main: true
+  load_from_file: true
+  file_path: /home/wind/Downloads/capture/800_02_0326/yaw/lidar_points_top/0.pcd
+  transform:
+    translation:
+      - 1.545
+      - -0.015
+      - 1.785
+    rotation:
+      - 0
+      - 0
+      - 0
+      - 0
+    rotation_euler:
+      - -0.002
+      - 0.002
+      - 0.01
+/lidar_points/front:
+  need_calibration: true
+  use_points: false
+  is_main: false
+  load_from_file: true
+  file_path: /home/wind/Downloads/capture/800_02_0326/yaw/lidar_points_front/0.pcd
+  transform:
+    translation:
+      - 1.715
+      - -0.615
+      - 1.395
+    rotation:
+      - 0
+      - 0
+      - 0
+      - 0
+    rotation_euler:
+      - -3.133
+      - -0.001
+      - -0.77
+/lidar_points/back:
+  need_calibration: true
+  use_points: false
+  is_main: false
+  load_from_file: true
+  file_path: /home/wind/Downloads/capture/800_02_0326/yaw/lidar_points_back/0.pcd
+  transform:
+    translation:
+      - -0.569
+      - 0.604
+      - 1.304
+    rotation:
+      - 0
+      - 0
+      - 0
+      - 0
+    rotation_euler:
+      - 3.127
+      - 0.008999999999999999
+      - 2.31
